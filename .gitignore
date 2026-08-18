@@ -1,0 +1,84 @@
+# --- Build output ---
+target/
+build/
+out/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# --- Maven ---
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties.bak
+
+# --- IDE: IntelliJ ---
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- IDE: Eclipse / VS Code ---
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+.vscode/
+!.vscode/extensions.json
+
+# --- JVM crash / profiling ---
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# --- Local configuration and secrets ---
+.env
+.env.*
+!.env.example
+*.local.yml
+*.local.yaml
+application-local.yml
+application-local.yaml
+src/main/resources/application-secrets.*
+
+# --- Runtime data (containers, volumes) ---
+/data/
+/infrastructure/data/
+/infrastructure/**/volumes/
+
+# --- Corpus: only the manifest and attribution are versioned ---
+/corpus/documents/
+!/corpus/MANIFEST.yml
+!/corpus/ATTRIBUTION.md
+
+# --- Evaluation: datasets are versioned, raw runs are not ---
+/eval/runs/
+/eval/.cache/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# --- Node (only if a UI build step is ever added) ---
+node_modules/

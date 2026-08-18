@@ -1,0 +1,21 @@
+# Demo corpus manifest
+#
+# Read by scripts/fetch-corpus.sh. Third-party documents are downloaded rather than
+# committed, so this file is the record of what the corpus actually contains.
+#
+# Status: placeholder. Populated in Phase 2, when ingestion exists.
+# Every entry's license is verified at fetch time, not assumed from this file.
+
+version: 0
+retrieved_at: null # set by fetch-corpus.sh
+
+sources: []
+# Shape of an entry, for reference:
+#
+# - id: spring-boot-reference
+#   title: Spring Boot Reference Documentation
+#   url: https://...
+#   license: Apache-2.0
+#   license_url: https://...
+#   sha256: null          # recorded at fetch time; makes the corpus reproducible
+#   tags: [spring, framework]
