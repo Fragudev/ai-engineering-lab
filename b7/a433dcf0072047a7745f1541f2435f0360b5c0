@@ -1,0 +1,19 @@
+docs/roadmap.md
+  s_f6c2719e97e037::t_f8fb9198b75928 12,46-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b7a433dcf0072047a7745f1541f2435f0360b5c0",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
