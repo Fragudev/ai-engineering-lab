@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <!--
+    Deliberately empty: no mirrors, no servers. This keeps the build resolving against Maven
+    Central regardless of a contributor's global ~/.m2/settings.xml (e.g. a corporate mirror
+    that may not proxy every artifact this project needs). Activated automatically for every
+    `mvn`/`mvnw` invocation from the repo root via .mvn/maven.config.
+  -->
+</settings>

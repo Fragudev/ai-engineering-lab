@@ -1,0 +1,20 @@
+# Active inside infrastructure/docker-compose.yml via SPRING_PROFILES_ACTIVE=docker.
+# Service names below are the Compose service names, resolved through Docker's internal DNS.
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/ai_lab
+
+management:
+  otlp:
+    metrics:
+      export:
+        url: http://observability:4318/v1/metrics
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://observability:4318/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: http://observability:4318/v1/logs

@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # Testcontainers needs Docker, which is preinstalled on ubuntu-latest runners.
+      # No live model server is required: Phase 0 has no AI-provider code yet, and once it
+      # exists CI runs against the `recorded` profile only (AGENTS.md, Environment constraints).
+      - name: Build and verify
+        run: ./mvnw -B verify

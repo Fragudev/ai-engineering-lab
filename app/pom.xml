@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.fragudev.ailab</groupId>
+    <artifactId>ai-engineering-lab</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>app</artifactId>
+  <packaging>jar</packaging>
+
+  <name>AI Engineering Lab :: app</name>
+  <description>
+    The single deployable Spring Boot application. Wires every domain module together; owns no
+    domain logic of its own (see docs/architecture.md #3).
+  </description>
+
+  <dependencies>
+    <!-- Domain modules -->
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>shared</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>ai-provider</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>conversation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>knowledge</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>ingestion</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>rag</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>tools</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>workflow</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>mcp</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>evaluation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>platform</artifactId>
+    </dependency>
+
+    <!-- Web + health -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-opentelemetry</artifactId>
+    </dependency>
+
+    <!-- Persistence -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <!--
+      Spring Boot 4 splits auto-configuration out of the monolithic spring-boot-autoconfigure jar
+      into per-technology modules; flyway-core/flyway-database-postgresql alone are inert without
+      this starter, which pulls in the spring-boot-flyway auto-configuration module.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Module boundaries -->
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-starter-core</artifactId>
+    </dependency>
+
+    <!-- Test -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-resttestclient</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>${archunit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>ai-engineering-lab</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>

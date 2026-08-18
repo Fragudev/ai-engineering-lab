@@ -1,0 +1,14 @@
+openapi: 3.1.0
+info:
+  title: AI Engineering Lab API
+  version: 0.1.0
+  description: >
+    Hybrid RAG, event-driven ingestion, tool calling, MCP and agentic workflows on the JVM.
+    Phase 0 scaffold only: no endpoints are published yet. The full contract this API is built
+    towards is recorded in docs/architecture.md (#5 API contracts) and implemented incrementally,
+    phase by phase, starting with the spec rather than the controller (AGENTS.md, Working through
+    a phase).
+servers:
+  - url: http://localhost:8080
+    description: Local
+paths: {}

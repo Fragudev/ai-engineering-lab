@@ -1,0 +1,9 @@
+.git/
+.github/
+.claude/
+docs/
+corpus/documents/
+eval/
+**/target/
+**/*.md
+.DS_Store
