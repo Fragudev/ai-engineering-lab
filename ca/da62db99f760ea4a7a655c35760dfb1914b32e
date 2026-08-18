@@ -1,0 +1,121 @@
+scripts/record-fixtures.sh
+  s_f6c2719e97e037::t_943ae05a7c75ca 1-61
+app/pom.xml
+  s_f6c2719e97e037::t_48d3d451989f03 79-82,87-93
+app/src/main/java/io/github/fragudev/ailab/ApiExceptionHandler.java
+  s_f6c2719e97e037::t_c771f5b7f960f6 1-55
+app/src/main/java/io/github/fragudev/ailab/ConversationController.java
+  s_f6c2719e97e037::t_9f3ea5af4b5e9f 1-104
+app/src/main/java/io/github/fragudev/ailab/ConversationResponse.java
+  s_f6c2719e97e037::t_16ec6d2305ba29 1-18
+app/src/main/java/io/github/fragudev/ailab/MessageResponse.java
+  s_f6c2719e97e037::t_07eea6c777e21b 1-35
+app/src/main/java/io/github/fragudev/ailab/ProblemDetails.java
+  s_f6c2719e97e037::t_03d7cff53fcf37 1-34
+app/src/main/java/io/github/fragudev/ailab/SendMessageRequest.java
+  s_f6c2719e97e037::t_c975b3fd6de5d2 1-5
+app/src/main/java/io/github/fragudev/ailab/UsageSummary.java
+  s_f6c2719e97e037::t_3b1c6abc3852b5 1-19
+app/src/main/resources/application-docker.yml
+  s_f6c2719e97e037::t_3815a555c02649 7-11
+app/src/main/resources/application.yml
+  s_f6c2719e97e037::t_3c13c9871dab89 4-5,18-28
+app/src/main/resources/db/migration/V2__create_conversation_and_message_tables.sql
+  s_f6c2719e97e037::t_ef263670b8b158 1-25
+app/src/main/resources/openapi/openapi.yaml
+  s_f6c2719e97e037::t_d7d80963853cff 7-10,14-197
+app/src/main/resources/static/index.html
+  s_f6c2719e97e037::t_32139180eebd5a 1-246
+app/src/test/java/io/github/fragudev/ailab/ConversationFlowIntegrationTest.java
+  s_f6c2719e97e037::t_3e7a430ef5d182 1-115
+app/src/test/java/io/github/fragudev/ailab/HealthCheckIntegrationTest.java
+  s_f6c2719e97e037::t_0272ef80a5b6b1 14,29
+infrastructure/docker-compose.yml
+  s_f6c2719e97e037::t_511e56ac1415b6 84-87
+modules/ai-provider/pom.xml
+  s_f6c2719e97e037::t_3f17ce0d5a0030 25-44,50-54
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatChunk.java
+  s_f6c2719e97e037::t_fa89ccb290d8eb 1-19
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatMessage.java
+  s_f6c2719e97e037::t_19e77df7849fe5 1-16
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatProvider.java
+  s_f6c2719e97e037::t_deb96b7ec7ca34 1-25
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatRequest.java
+  s_f6c2719e97e037::t_607a94ff8bc65b 1-6
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatResponse.java
+  s_f6c2719e97e037::t_6ef76b226b037f 1-11
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatRole.java
+  s_f6c2719e97e037::t_f9145823c594fc 1-9
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/Embedding.java
+  s_f6c2719e97e037::t_0205ed0ae475bf 1-4
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/EmbeddingProvider.java
+  s_f6c2719e97e037::t_a69f5b0146b7f4 1-13
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ProviderCapabilities.java
+  s_f6c2719e97e037::t_85d216e406ec8c 1-8
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/TokenUsage.java
+  s_f6c2719e97e037::t_665008b7607f9a 1-12
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/FixtureSet.java
+  s_f6c2719e97e037::t_9861c61bfb7f79 1-10
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioProperties.java
+  s_f6c2719e97e037::t_2689129268db56 1-8
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioProviderConfiguration.java
+  s_f6c2719e97e037::t_b89677ef5f1ed9 1-54
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/PromptMapping.java
+  s_f6c2719e97e037::t_b8e517d77916a3 1-29
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/RecordedChatProvider.java
+  s_f6c2719e97e037::t_d156d25ccd7a0c 1-101
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/RecordedEmbeddingProvider.java
+  s_f6c2719e97e037::t_4cab17773e1f54 1-41
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/RecordedProviderConfiguration.java
+  s_f6c2719e97e037::t_1d024890438569 1-27
+modules/ai-provider/src/main/resources/fixtures/chat/fixtures.json
+  s_f6c2719e97e037::t_d860434d57e55e 1-27
+modules/ai-provider/src/test/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioChatProviderTest.java
+  s_f6c2719e97e037::t_ffbd767a24e976 1-50
+modules/conversation/pom.xml
+  s_f6c2719e97e037::t_41aa4c6824f8fa 29-32
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/Conversation.java
+  s_f6c2719e97e037::t_0037426d507bb2 1-61
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/ConversationService.java
+  s_f6c2719e97e037::t_1c8f2f9007f960 1-83
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/Message.java
+  s_f6c2719e97e037::t_eac3e5f2018455 1-143
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/internal/ConversationRepository.java
+  s_f6c2719e97e037::t_5afb0097964e97 1-7
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/internal/MessageRepository.java
+  s_f6c2719e97e037::t_114a1bd726776f 1-11
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/ConversationId.java
+  s_f6c2719e97e037::t_7f80192f3d278f 1-20
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/MessageId.java
+  s_f6c2719e97e037::t_fc54f1c13dfbbf 1-20
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/ProviderException.java
+  s_f6c2719e97e037::t_e3bf959a14515a 1-16
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/ProviderTimeoutException.java
+  s_f6c2719e97e037::t_45cc767f80fabb 1-11
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/ProviderUnavailableException.java
+  s_f6c2719e97e037::t_4608326cf5c41b 1-9
+docs/architecture.md
+  s_f6c2719e97e037::t_29f78d72051cba 249
+docs/roadmap.md
+  s_f6c2719e97e037::t_032655bba48ab0 13,76-108
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioChatProvider.java
+  s_f6c2719e97e037::t_2209975ce7722e 1-144
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioEmbeddingProvider.java
+  s_f6c2719e97e037::t_4ddb738cdd4476 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cada62db99f760ea4a7a655c35760dfb1914b32e",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
