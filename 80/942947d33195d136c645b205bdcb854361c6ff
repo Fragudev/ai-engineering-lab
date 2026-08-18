@@ -1,0 +1,57 @@
+.gitignore
+  s_f6c2719e97e037::t_13df9ad30e2cb8 1-84
+AGENTS.md
+  s_f6c2719e97e037::t_f489c120b87da9 1-146
+CONTRIBUTING.md
+  s_f6c2719e97e037::t_48e8954fc01758 1-62
+LICENSE
+  s_f6c2719e97e037::t_70966446c19cc6 1-202
+README.md
+  s_f6c2719e97e037::t_5bf2976380e708 1-245
+corpus/ATTRIBUTION.md
+  s_f6c2719e97e037::t_c4bdc8e5d79c8c 1-33
+corpus/MANIFEST.yml
+  s_f6c2719e97e037::t_52ca875e66c650 1-21
+docs/adr/0000-template.md
+  s_f6c2719e97e037::t_c18daf33b09472 1-38
+docs/adr/0001-build-and-project-structure.md
+  s_f6c2719e97e037::t_88a8eb5c58984f 1-71
+docs/adr/0002-modular-monolith.md
+  s_f6c2719e97e037::t_df67da239e0697 1-83
+docs/adr/0003-persistence-and-vector-store.md
+  s_f6c2719e97e037::t_89d419a585c602 1-74
+docs/adr/0004-ai-provider-abstraction.md
+  s_f6c2719e97e037::t_66c3ef010b038e 1-82
+docs/adr/0005-kafka.md
+  s_f6c2719e97e037::t_fcce335f4e8443 1-95
+docs/adr/README.md
+  s_f6c2719e97e037::t_6f90a0d87eb405 1-39
+docs/ai-evaluation.md
+  s_f6c2719e97e037::t_462727aa758003 1-166
+docs/architecture.md
+  s_f6c2719e97e037::t_d479cf467d8f61 1-577
+docs/events/README.md
+  s_f6c2719e97e037::t_500d2a9e3e436e 1-63
+docs/operations.md
+  s_f6c2719e97e037::t_030f9c1ad8db9a 1-137
+docs/roadmap.md
+  s_f6c2719e97e037::t_62816cfd239e72 1-193
+docs/threat-model.md
+  s_f6c2719e97e037::t_1f9316c7e04f6a 1-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "80942947d33195d136c645b205bdcb854361c6ff",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
