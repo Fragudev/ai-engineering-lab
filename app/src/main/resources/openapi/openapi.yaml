@@ -4,11 +4,194 @@ info:
   version: 0.1.0
   description: >
     Hybrid RAG, event-driven ingestion, tool calling, MCP and agentic workflows on the JVM.
-    Phase 0 scaffold only: no endpoints are published yet. The full contract this API is built
-    towards is recorded in docs/architecture.md (#5 API contracts) and implemented incrementally,
-    phase by phase, starting with the spec rather than the controller (AGENTS.md, Working through
-    a phase).
+    Phase 1 adds the chat vertical slice: conversations, messages and SSE streaming. The full
+    contract this API is built towards is recorded in docs/architecture.md (#5 API contracts) and
+    implemented incrementally, phase by phase, starting with the spec rather than the controller
+    (AGENTS.md, Working through a phase).
 servers:
   - url: http://localhost:8080
     description: Local
-paths: {}
+
+paths:
+  /api/v1/conversations:
+    post:
+      operationId: createConversation
+      summary: Start a new conversation
+      responses:
+        "201":
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /api/v1/conversations/{id}:
+    get:
+      operationId: getConversation
+      summary: Fetch a conversation
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+      responses:
+        "200":
+          description: The conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "404":
+          $ref: "#/components/responses/ProblemDetail"
+
+  /api/v1/conversations/{id}/messages:
+    get:
+      operationId: listMessages
+      summary: List a conversation's messages, oldest first
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+      responses:
+        "200":
+          description: Messages in the conversation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        "404":
+          $ref: "#/components/responses/ProblemDetail"
+    post:
+      operationId: sendMessage
+      summary: >
+        Send a user message and stream the assistant's reply token by token. Phase 1 only
+        implements the streaming (Accept: text/event-stream) response; a synchronous JSON variant
+        is part of the documented contract but not built until something needs it.
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "200":
+          description: >
+            An SSE stream. Event types: `token` (data: a content delta), `usage` (data: a
+            UsageSummary JSON object, sent once as the final event before `done`), `done` (stream
+            finished normally), `error` (data: a ProblemDetail JSON object, e.g. status 504 on a
+            provider timeout; the stream then closes). A mid-stream failure cannot become a real
+            HTTP error status — the response is already a committed 200 SSE stream by the time a
+            provider call can fail — so it surfaces in-band via the `error` event instead; that is
+            what "a typed error, not a hung request" means for this endpoint specifically. Citation
+            and tool_call/tool_result event types are part of the full contract
+            (docs/architecture.md #5) but have no producer until Phase 3/5.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "404":
+          description: >
+            The conversation does not exist. Unlike a mid-stream provider failure, this is checked
+            before the SSE stream is established, so it is a real HTTP 404.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+components:
+  parameters:
+    ConversationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    ProblemDetail:
+      description: An RFC 9457 problem detail.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
+  schemas:
+    Conversation:
+      type: object
+      required: [id, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        ragProfile:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Message:
+      type: object
+      required: [id, conversationId, role, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+        content:
+          type: string
+        model:
+          type: string
+          nullable: true
+        promptTokens:
+          type: integer
+          nullable: true
+        completionTokens:
+          type: integer
+          nullable: true
+        latencyMs:
+          type: integer
+          format: int64
+          nullable: true
+        estimatedCostUsd:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457.
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

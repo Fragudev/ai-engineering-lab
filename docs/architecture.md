@@ -246,7 +246,7 @@ PostgreSQL 17 with pgvector. Flyway migrations, forward-only.
 ```
 conversation(id, title, rag_profile, created_at, updated_at)
 message(id, conversation_id, role, content, model,
-        prompt_tokens, completion_tokens, latency_ms, created_at)
+        prompt_tokens, completion_tokens, latency_ms, estimated_cost_usd, created_at)
 citation(id, message_id, chunk_id, score, quoted_span)
 
 document(id, source_uri, title, mime_type, content_hash UNIQUE,

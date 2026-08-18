@@ -81,7 +81,10 @@ services:
       observability:
         condition: service_started
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      # SPRING_PROFILES_ACTIVE (env var) replaces application.yml's spring.profiles.active
+      # entirely rather than adding to it, so both profiles are listed explicitly here: docker
+      # (datasource/OTLP endpoints) + lmstudio (provider beans).
+      SPRING_PROFILES_ACTIVE: docker,lmstudio
     ports:
       - "8080:8080"
     # LM Studio runs on the host, not in Compose (AGENTS.md, Environment constraints).
