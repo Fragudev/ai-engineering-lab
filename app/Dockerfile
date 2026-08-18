@@ -5,7 +5,7 @@
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 COPY . .
-RUN chmod +x mvnw && ./mvnw -B -q -s .mvn/settings.xml -pl app -am package -DskipTests
+RUN chmod +x mvnw && ./mvnw -B -q -pl app -am package -DskipTests
 
 FROM eclipse-temurin:25-jre AS run
 WORKDIR /app
