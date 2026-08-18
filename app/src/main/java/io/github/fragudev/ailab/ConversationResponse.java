@@ -5,7 +5,8 @@ import java.time.Instant;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
-record ConversationResponse(UUID id, @Nullable String title, @Nullable String ragProfile, Instant createdAt, Instant updatedAt) {
+record ConversationResponse(
+        UUID id, @Nullable String title, @Nullable String ragProfile, Instant createdAt, Instant updatedAt) {
 
     static ConversationResponse from(Conversation conversation) {
         return new ConversationResponse(

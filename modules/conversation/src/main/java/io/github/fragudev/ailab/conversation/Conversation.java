@@ -16,7 +16,8 @@ public class Conversation {
     @Id
     private UUID id;
 
-    @Nullable private String title;
+    @Nullable
+    private String title;
 
     @Nullable
     @Column(name = "rag_profile")

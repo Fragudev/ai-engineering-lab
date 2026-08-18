@@ -5,7 +5,13 @@ import java.math.BigDecimal;
 import org.jspecify.annotations.Nullable;
 
 /** The payload of the SSE `usage` event: what an answer cost, and where to find its trace. */
-record UsageSummary(String model, int promptTokens, int completionTokens, long latencyMs, BigDecimal estimatedCostUsd, @Nullable String traceId) {
+record UsageSummary(
+        String model,
+        int promptTokens,
+        int completionTokens,
+        long latencyMs,
+        BigDecimal estimatedCostUsd,
+        @Nullable String traceId) {
 
     static UsageSummary from(ChatResponse response, @Nullable String traceId) {
         return new UsageSummary(

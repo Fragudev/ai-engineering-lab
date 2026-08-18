@@ -70,7 +70,8 @@ class ConversationController {
         return emitter;
     }
 
-    private static void onChunk(SseEmitter emitter, io.github.fragudev.ailab.aiprovider.ChatChunk chunk, String traceId) {
+    private static void onChunk(
+            SseEmitter emitter, io.github.fragudev.ailab.aiprovider.ChatChunk chunk, String traceId) {
         try {
             if (chunk.last()) {
                 emitter.send(SseEmitter.event()

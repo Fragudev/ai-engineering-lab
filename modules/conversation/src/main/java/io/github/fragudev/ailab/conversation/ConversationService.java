@@ -26,7 +26,9 @@ public class ConversationService {
     private final ChatProvider chatProvider;
 
     public ConversationService(
-            ConversationRepository conversationRepository, MessageRepository messageRepository, ChatProvider chatProvider) {
+            ConversationRepository conversationRepository,
+            MessageRepository messageRepository,
+            ChatProvider chatProvider) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.chatProvider = chatProvider;
@@ -55,18 +57,19 @@ public class ConversationService {
         Conversation conversation = getConversation(conversationId);
         messageRepository.save(Message.userMessage(conversation.id(), userContent));
 
-        List<ChatMessage> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.id().value())
-                .stream()
-                .map(message -> new ChatMessage(message.role(), message.content()))
-                .toList();
+        List<ChatMessage> history =
+                messageRepository
+                        .findByConversationIdOrderByCreatedAtAsc(
+                                conversation.id().value())
+                        .stream()
+                        .map(message -> new ChatMessage(message.role(), message.content()))
+                        .toList();
 
-        return chatProvider
-                .stream(new ChatRequest(history))
-                .doOnNext(chunk -> {
-                    if (chunk.last()) {
-                        persistAssistantReply(conversation.id(), chunk.aggregate());
-                    }
-                });
+        return chatProvider.stream(new ChatRequest(history)).doOnNext(chunk -> {
+            if (chunk.last()) {
+                persistAssistantReply(conversation.id(), chunk.aggregate());
+            }
+        });
     }
 
     private void persistAssistantReply(ConversationId conversationId, ChatResponse aggregate) {

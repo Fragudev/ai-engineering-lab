@@ -35,8 +35,8 @@ class LmStudioChatProviderTest {
             }
         };
 
-        LmStudioChatProvider provider =
-                new LmStudioChatProvider(neverRespondingModel, "test-model", Duration.ofMillis(50), ObservationRegistry.NOOP);
+        LmStudioChatProvider provider = new LmStudioChatProvider(
+                neverRespondingModel, "test-model", Duration.ofMillis(50), ObservationRegistry.NOOP);
 
         ChatRequest request = new ChatRequest(List.of(ChatMessage.user("hello")));
 

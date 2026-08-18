@@ -5,4 +5,5 @@ package io.github.fragudev.ailab.aiprovider;
  * failing mysteriously (docs/adr/0004-ai-provider-abstraction.md). {@code tools} (Phase 5) queries
  * {@code supportsNativeToolCalling} for its structured-output fallback.
  */
-public record ProviderCapabilities(boolean supportsNativeToolCalling, boolean supportsStructuredOutput, int contextWindowTokens) {}
+public record ProviderCapabilities(
+        boolean supportsNativeToolCalling, boolean supportsStructuredOutput, int contextWindowTokens) {}

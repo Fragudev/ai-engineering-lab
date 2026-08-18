@@ -15,7 +15,8 @@ final class PromptMapping {
     private PromptMapping() {}
 
     static Prompt toPrompt(ChatRequest request) {
-        List<Message> messages = request.messages().stream().map(PromptMapping::toSpringMessage).toList();
+        List<Message> messages =
+                request.messages().stream().map(PromptMapping::toSpringMessage).toList();
         return new Prompt(messages);
     }
 

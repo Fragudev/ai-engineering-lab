@@ -8,4 +8,5 @@ import java.time.Duration;
  * {@link BigDecimal#ZERO} for every adapter that has no pricing data (local compute, fixtures), and
  * only ever non-zero once an adapter is wired to a real, documented price list.
  */
-public record ChatResponse(String content, String model, TokenUsage usage, Duration latency, BigDecimal estimatedCostUsd) {}
+public record ChatResponse(
+        String content, String model, TokenUsage usage, Duration latency, BigDecimal estimatedCostUsd) {}

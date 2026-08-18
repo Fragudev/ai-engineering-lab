@@ -56,8 +56,8 @@ final class RecordedChatProvider implements ChatProvider {
                 .delayElements(SIMULATED_TOKEN_DELAY)
                 .index()
                 .map(indexed -> ChatChunk.delta(indexed.getT1() == 0 ? indexed.getT2() : " " + indexed.getT2()))
-                .concatWith(Mono.defer(
-                        () -> Mono.just(ChatChunk.last(toChatResponse(fixture, Duration.between(start, Instant.now()))))));
+                .concatWith(Mono.defer(() ->
+                        Mono.just(ChatChunk.last(toChatResponse(fixture, Duration.between(start, Instant.now()))))));
     }
 
     @Override
@@ -74,7 +74,8 @@ final class RecordedChatProvider implements ChatProvider {
                 .toLowerCase(Locale.ROOT);
 
         return fixtures.cases().stream()
-                .filter(fixtureCase -> lastUserMessage.contains(fixtureCase.matchContains().toLowerCase(Locale.ROOT)))
+                .filter(fixtureCase ->
+                        lastUserMessage.contains(fixtureCase.matchContains().toLowerCase(Locale.ROOT)))
                 .findFirst()
                 .orElse(fixtures.defaultCase());
     }

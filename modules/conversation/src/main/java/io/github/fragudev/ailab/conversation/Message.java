@@ -30,7 +30,8 @@ public class Message {
     @Column(columnDefinition = "text")
     private String content;
 
-    @Nullable private String model;
+    @Nullable
+    private String model;
 
     @Nullable
     @Column(name = "prompt_tokens")

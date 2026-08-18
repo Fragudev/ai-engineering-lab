@@ -29,7 +29,8 @@ final class LmStudioChatProvider implements ChatProvider {
     private final Duration timeout;
     private final ObservationRegistry observationRegistry;
 
-    LmStudioChatProvider(ChatModel chatModel, String modelName, Duration timeout, ObservationRegistry observationRegistry) {
+    LmStudioChatProvider(
+            ChatModel chatModel, String modelName, Duration timeout, ObservationRegistry observationRegistry) {
         this.chatModel = chatModel;
         this.modelName = modelName;
         this.timeout = timeout;
@@ -42,7 +43,8 @@ final class LmStudioChatProvider implements ChatProvider {
         return observation.observe(() -> {
             Instant start = Instant.now();
             try {
-                org.springframework.ai.chat.model.ChatResponse response = chatModel.call(PromptMapping.toPrompt(request));
+                org.springframework.ai.chat.model.ChatResponse response =
+                        chatModel.call(PromptMapping.toPrompt(request));
                 ChatResponse result = toChatResponse(response, Duration.between(start, Instant.now()));
                 tagObservation(observation, result);
                 return result;
@@ -74,7 +76,8 @@ final class LmStudioChatProvider implements ChatProvider {
                     return ChatChunk.delta(delta);
                 })
                 .concatWith(Mono.defer(() -> {
-                    ChatResponse aggregate = toAggregateChatResponse(lastChunk.get(), aggregateText.toString(), Duration.between(start, Instant.now()));
+                    ChatResponse aggregate = toAggregateChatResponse(
+                            lastChunk.get(), aggregateText.toString(), Duration.between(start, Instant.now()));
                     tagObservation(observation, aggregate);
                     return Mono.just(ChatChunk.last(aggregate));
                 }))
@@ -83,7 +86,9 @@ final class LmStudioChatProvider implements ChatProvider {
                 // not always surface here as the exact com.openai.errors.OpenAIIoException type —
                 // it can arrive wrapped by Reactor. Anything that isn't already one of this
                 // adapter's own typed exceptions is, by this method's contract, a provider failure.
-                .onErrorMap(error -> !(error instanceof ProviderTimeoutException), error -> new ProviderUnavailableException(PROVIDER_NAME, error))
+                .onErrorMap(
+                        error -> !(error instanceof ProviderTimeoutException),
+                        error -> new ProviderUnavailableException(PROVIDER_NAME, error))
                 .doFinally(signal -> observation.stop());
     }
 
@@ -103,8 +108,12 @@ final class LmStudioChatProvider implements ChatProvider {
     private static void tagObservation(Observation observation, ChatResponse response) {
         observation
                 .lowCardinalityKeyValue("gen_ai.response.model", response.model())
-                .highCardinalityKeyValue("gen_ai.usage.prompt_tokens", String.valueOf(response.usage().promptTokens()))
-                .highCardinalityKeyValue("gen_ai.usage.completion_tokens", String.valueOf(response.usage().completionTokens()));
+                .highCardinalityKeyValue(
+                        "gen_ai.usage.prompt_tokens",
+                        String.valueOf(response.usage().promptTokens()))
+                .highCardinalityKeyValue(
+                        "gen_ai.usage.completion_tokens",
+                        String.valueOf(response.usage().completionTokens()));
     }
 
     private static String extractText(org.springframework.ai.chat.model.ChatResponse response) {
@@ -120,12 +129,16 @@ final class LmStudioChatProvider implements ChatProvider {
         return new ChatResponse(content, resolveModelName(response), toTokenUsage(response), latency, BigDecimal.ZERO);
     }
 
-    private ChatResponse toAggregateChatResponse(org.springframework.ai.chat.model.ChatResponse lastChunk, String content, Duration latency) {
-        return new ChatResponse(content, resolveModelName(lastChunk), toTokenUsage(lastChunk), latency, BigDecimal.ZERO);
+    private ChatResponse toAggregateChatResponse(
+            org.springframework.ai.chat.model.ChatResponse lastChunk, String content, Duration latency) {
+        return new ChatResponse(
+                content, resolveModelName(lastChunk), toTokenUsage(lastChunk), latency, BigDecimal.ZERO);
     }
 
     private String resolveModelName(org.springframework.ai.chat.model.ChatResponse response) {
-        if (response != null && response.getMetadata() != null && response.getMetadata().getModel() != null) {
+        if (response != null
+                && response.getMetadata() != null
+                && response.getMetadata().getModel() != null) {
             String model = response.getMetadata().getModel();
             if (!model.isBlank()) {
                 return model;
@@ -135,7 +148,9 @@ final class LmStudioChatProvider implements ChatProvider {
     }
 
     private static TokenUsage toTokenUsage(org.springframework.ai.chat.model.ChatResponse response) {
-        if (response == null || response.getMetadata() == null || response.getMetadata().getUsage() == null) {
+        if (response == null
+                || response.getMetadata() == null
+                || response.getMetadata().getUsage() == null) {
             return TokenUsage.zero();
         }
         var usage = response.getMetadata().getUsage();

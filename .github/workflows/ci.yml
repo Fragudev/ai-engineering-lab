@@ -21,8 +21,19 @@ jobs:
           java-version: "25"
           cache: maven
 
-      # Testcontainers needs Docker, which is preinstalled on ubuntu-latest runners.
-      # No live model server is required: Phase 0 has no AI-provider code yet, and once it
-      # exists CI runs against the `recorded` profile only (AGENTS.md, Environment constraints).
+      # Fails fast on a formatting nit before spending minutes on the full build + test suite.
+      - name: Check formatting
+        run: ./mvnw -B spotless:check
+
+      # Testcontainers needs Docker, which is preinstalled on ubuntu-latest runners. No live model
+      # server is required: CI runs the `recorded` provider profile only, never a live one
+      # (AGENTS.md, Environment constraints).
       - name: Build and verify
         run: ./mvnw -B verify
+
+      # The Maven build alone doesn't prove the shippable artifact works: the Dockerfile compiles
+      # with a different (real) JDK image and a different build context than the host runner, and
+      # that gap is exactly where past bugs surfaced (a Maven settings flag that only broke inside
+      # the container). Building it here catches that class of issue on every push.
+      - name: Build container image
+        run: docker build -f app/Dockerfile -t ai-engineering-lab-app:ci .
