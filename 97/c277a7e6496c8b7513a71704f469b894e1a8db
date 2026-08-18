@@ -1,0 +1,133 @@
+app/src/main/java/io/github/fragudev/ailab/CitationEvent.java
+  s_f6c2719e97e037::t_899246ba29cf85 1-20
+app/src/main/java/io/github/fragudev/ailab/ConversationController.java
+  s_f6c2719e97e037::t_d1444b1fbbdbbf 3-5,7-11,13,19,39,41,43,47-53,65,74-76,82-98,100,107,121-161
+app/src/main/java/io/github/fragudev/ailab/RetrievalController.java
+  s_f6c2719e97e037::t_f0b24f2eb66435 1-38
+app/src/main/java/io/github/fragudev/ailab/RetrievalSearchRequest.java
+  s_f6c2719e97e037::t_05c610ce726058 1-6
+app/src/main/java/io/github/fragudev/ailab/SendMessageRequest.java
+  s_f6c2719e97e037::t_43a6b18a12cadd 4,6-7
+app/src/test/java/io/github/fragudev/ailab/RagFlowIntegrationTest.java
+  s_f6c2719e97e037::t_256415f42b10fc 1-176
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/CitationInput.java
+  s_f6c2719e97e037::t_332892dfc8e50a 1-14
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/HybridSearchService.java
+  s_f6c2719e97e037::t_313fe4d6cf212c 1-97
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/LlmReranker.java
+  s_f6c2719e97e037::t_a5e67dc5cd3ee9 1-111
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/MmrReranker.java
+  s_f6c2719e97e037::t_2fc04c14accd15 1-74
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/ReciprocalRankFusion.java
+  s_f6c2719e97e037::t_eecece5dd70342 1-60
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/Reranker.java
+  s_f6c2719e97e037::t_146f701dba0c79 1-23
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagAnswer.java
+  s_206de2bdcac249::t_76137afbdee46e 1-16
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagAnswerChunk.java
+  s_f6c2719e97e037::t_50c9568688aa3d 1-28
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagCitationResult.java
+  s_f6c2719e97e037::t_02f67b2743263e 1-16
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagProfiles.java
+  s_206de2bdcac249::t_fd011127b98747 1-33
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/internal/ContextBuilder.java
+  s_f6c2719e97e037::t_0fcfbf887d3728 1-55
+app/src/main/java/io/github/fragudev/ailab/ApiExceptionHandler.java
+  s_f6c2719e97e037::t_7b1a1d16f3c50d 32-36
+app/src/main/java/io/github/fragudev/ailab/CitationResponse.java
+  s_f6c2719e97e037::t_62edc862fed6e0 1-30
+app/src/main/java/io/github/fragudev/ailab/CreateConversationRequest.java
+  s_f6c2719e97e037::t_dcd1e3a6734e43 1-5
+app/src/main/java/io/github/fragudev/ailab/MessageResponse.java
+  s_f6c2719e97e037::t_bd97b63ca2342d 4,8,22,25,36
+app/src/main/java/io/github/fragudev/ailab/ProblemDetails.java
+  s_f6c2719e97e037::t_a1be025ec845c3 32-34
+app/src/main/java/io/github/fragudev/ailab/RagProfileResponse.java
+  s_f6c2719e97e037::t_7395f75789301c 1-25
+app/src/main/java/io/github/fragudev/ailab/RetrievalTraceResponse.java
+  s_f6c2719e97e037::t_7582bf195290a0 1-16
+app/src/main/java/io/github/fragudev/ailab/SearchResultResponse.java
+  s_f6c2719e97e037::t_38a38765cc4a18 1-28
+app/src/main/java/io/github/fragudev/ailab/UsageSummary.java
+  s_f6c2719e97e037::t_2e6965a7fe5dd2 4,26-35
+app/src/main/resources/db/migration/V5__create_citation_table.sql
+  s_f6c2719e97e037::t_33fe69034ea819 1-18
+app/src/main/resources/openapi/openapi.yaml
+  s_f6c2719e97e037::t_d3c5f3dea1fa81 19-27,35-36,76-78,90-101,218-256,304-311,343-375,387-478
+app/src/test/java/io/github/fragudev/ailab/RetrievalSearchIntegrationTest.java
+  s_f6c2719e97e037::t_c25be713b90963 1-143
+docs/adr/0007-hybrid-retrieval-and-fusion.md
+  s_f6c2719e97e037::t_536faebd871196 1-88
+docs/adr/0008-rag-pipeline-architecture.md
+  s_f6c2719e97e037::t_cf225fdb18bc5b 1-115
+docs/adr/README.md
+  s_f6c2719e97e037::t_459fc1a850961b 19-21
+docs/roadmap.md
+  s_f6c2719e97e037::t_c65241abfc9665 15,199-200,204-246
+modules/ai-provider/src/main/resources/fixtures/chat/fixtures.json
+  s_f6c2719e97e037::t_12d18c3976dd17 25-30
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/Citation.java
+  s_f6c2719e97e037::t_f486c825b2194b 1-100
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/Conversation.java
+  s_f6c2719e97e037::t_072504fde7e94c 37-43,45
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/ConversationService.java
+  s_f6c2719e97e037::t_1781bc993b5e55 8,11,13-14,18,24-28,35,41,45,50-54,67-110
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/internal/CitationRepository.java
+  s_f6c2719e97e037::t_ea49a232773240 1-11
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/Chunk.java
+  s_f6c2719e97e037::t_08a2a1911476bf 95-98
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/HybridSearchOptions.java
+  s_f6c2719e97e037::t_44082d55cf4347 1-12
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/RerankStrategy.java
+  s_f6c2719e97e037::t_28a2d511ce6104 1-21
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/SearchResult.java
+  s_f6c2719e97e037::t_770822f7744e3e 1-19
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/ChunkRepository.java
+  s_f6c2719e97e037::t_de982920c66a4a 6,8-9,18-39
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/LexicalCandidateRow.java
+  s_f6c2719e97e037::t_7a175b21ef4a20 1-15
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/VectorCandidateRow.java
+  s_f6c2719e97e037::t_e4d871b0e050af 1-6
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagPipeline.java
+  s_f6c2719e97e037::t_a1b6d8c776a992 1-138
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagProfile.java
+  s_f6c2719e97e037::t_915f03313bcc79 1-30
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RetrievalTrace.java
+  s_f6c2719e97e037::t_886789a183d054 1-12
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/internal/ChunkReference.java
+  s_f6c2719e97e037::t_aeb8ab126aaa21 1-7
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/internal/CitationExtractor.java
+  s_f6c2719e97e037::t_b7782c6e5264b3 1-101
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/internal/QueryNormalizer.java
+  s_f6c2719e97e037::t_e21839aa6a5172 1-59
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/CitationId.java
+  s_f6c2719e97e037::t_1988e23486ec90 1-20
+README.md
+  s_f6c2719e97e037::t_4107a94a135120 9-11,35-39,76
+docs/architecture.md
+  s_f6c2719e97e037::t_c2169050364991 256,292-297,352-354,358-366,370-375,407-411,423-427,429-443,445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "97c277a7e6496c8b7513a71704f469b894e1a8db",
+  "prompts": {},
+  "sessions": {
+    "s_206de2bdcac249": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a01619-de98-72d0-888b-1d10882c880c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
