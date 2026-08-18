@@ -94,13 +94,39 @@
     cursor: pointer;
   }
   button:disabled { opacity: 0.5; cursor: default; }
+  #ingestion {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  #ingestion h2 { font-size: 0.85rem; margin: 0 0 0.5rem; }
+  #ingestion form { padding: 0; border: none; margin-bottom: 0.5rem; }
+  #documentList { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; }
+  .doc-row { display: flex; justify-content: space-between; gap: 0.5rem; }
+  .doc-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stage-badge {
+    padding: 0.05rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+  .stage-INDEXED { background: #16a34a; color: white; }
+  .stage-FAILED { background: var(--error-fg); color: white; }
+  .stage-UPLOADED, .stage-PARSED, .stage-CHUNKED { background: var(--muted); color: white; }
 </style>
 </head>
 <body>
 <header>
   <h1>AI Engineering Lab</h1>
-  <p>Phase 1 — chat vertical slice. Deliberately minimal: enough to demonstrate streaming, token/cost accounting and tracing.</p>
+  <p>Phase 2 — asynchronous ingestion. Deliberately minimal: enough to demonstrate streaming, token/cost accounting, tracing, and the upload → parse → chunk → embed → index pipeline.</p>
 </header>
+<section id="ingestion">
+  <h2>Documents</h2>
+  <form id="uploadForm">
+    <input id="fileInput" type="file" accept="text/plain,text/markdown,.md,.txt" />
+    <button type="submit">Upload</button>
+  </form>
+  <div id="documentList"></div>
+</section>
 <div id="messages"></div>
 <form id="composer">
   <input id="input" type="text" placeholder="Ask something…" autocomplete="off" />
@@ -240,6 +266,73 @@
       input.focus();
     }
   });
+})();
+
+// Ingestion panel: upload a document, then poll its job status until it reaches a terminal
+// stage. Polling, not a real-time dashboard — consistent with the deliberately minimal UI.
+(function () {
+  const uploadForm = document.getElementById("uploadForm");
+  const fileInput = document.getElementById("fileInput");
+  const documentList = document.getElementById("documentList");
+  const jobsByDocumentId = new Map();
+
+  function renderDocuments(documents) {
+    documentList.innerHTML = "";
+    for (const doc of documents) {
+      const job = jobsByDocumentId.get(doc.id);
+      const stage = job ? job.stage : doc.status;
+      const row = document.createElement("div");
+      row.className = "doc-row";
+      row.innerHTML =
+          `<span class="doc-title">${doc.title}</span>` +
+          `<span class="stage-badge stage-${stage}">${stage}${job && job.lastError ? ": " + job.lastError : ""}</span>`;
+      documentList.appendChild(row);
+    }
+  }
+
+  async function refreshDocuments() {
+    const response = await fetch("/api/v1/documents");
+    if (!response.ok) return;
+    const documents = await response.json();
+    renderDocuments(documents);
+    return documents;
+  }
+
+  async function pollJob(jobLocation, documentId) {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const response = await fetch(jobLocation);
+      if (!response.ok) return;
+      const job = await response.json();
+      jobsByDocumentId.set(documentId, job);
+      const documents = await refreshDocuments();
+      if (job.stage === "INDEXED" || job.stage === "FAILED") return;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  uploadForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", file.name);
+
+    const response = await fetch("/api/v1/documents", { method: "POST", body: formData });
+    fileInput.value = "";
+    if (!response.ok) return;
+
+    const document_ = await response.json();
+    await refreshDocuments();
+
+    const jobLocation = response.headers.get("Location");
+    if (jobLocation) {
+      pollJob(jobLocation, document_.id);
+    }
+  });
+
+  refreshDocuments();
 })();
 </script>
 </body>

@@ -186,7 +186,9 @@ citations it already delivered intact.
 ## 6. Event contracts
 
 Topics are versioned in their names. Every message carries a common envelope, modelled on
-CloudEvents without adopting the full specification:
+CloudEvents without adopting the full specification. Payload fields are inlined at the top level,
+not nested under a `payload` key — a flat record serializes directly via Jackson with no custom
+(de)serializer, and each topic's own schema in [`events/`](events/) is the full message shape:
 
 ```json
 {
@@ -197,7 +199,7 @@ CloudEvents without adopting the full specification:
   "time": "2026-08-18T10:00:00Z",
   "correlationId": "0192f3a4-...",
   "causationId": "0192f3a4-...",
-  "payload": {}
+  "documentId": "0192f3a4-..."
 }
 ```
 
@@ -223,9 +225,13 @@ then the topic's `.dlt`. Non-retryable failures — unsupported MIME type, corru
 violation — skip the retries and go straight to the DLT. Retrying a permanently broken document
 three times only delays the inevitable and pollutes the metrics.
 
-**Correlation propagates end to end.** The HTTP request's correlation id travels in Kafka headers
-into every consumer and into the OpenTelemetry context, so a single upload is one connected trace in
-Tempo from `POST /documents` to the last chunk indexed.
+**Correlation propagates end to end.** Every event carries the upload's `correlationId`, and every
+consuming stage tags its active span with it (`io.micrometer.tracing.Tracer`). This is deliberately
+not the same claim as "one unbroken W3C trace": Spring Modulith externalizes events to Kafka
+asynchronously after transaction commit, so the HTTP request and the Kafka-publish chain land as
+separate trace IDs in Tempo — the whole flow from `POST /documents` to the last chunk indexed is
+fully recoverable by filtering Tempo on `correlationId`, verified live, which is the guarantee this
+system actually makes.
 
 **Entering Kafka: the transactional outbox.** Writing to the database and publishing to Kafka are
 not atomic, and the naive version loses events on crash. Spring Modulith's event publication registry
@@ -268,7 +274,16 @@ eval_result(id, run_id, case_id, answer, metrics JSONB)
 
 processed_event(consumer_group, event_id, processed_at)   -- composite PK
 idempotency_key(key, endpoint, response_hash, created_at)
+
+event_publication(id, listener_id, event_type, serialized_event, publication_date,
+                   completion_date, last_resubmission_date, completion_attempts, status)
 ```
+
+`event_publication` is Spring Modulith's transactional-outbox bookkeeping table (the mechanism behind
+"entering Kafka" above), not application domain data — it doesn't auto-provision itself under this
+project's Flyway-only, `ddl-auto=none` setup, so it's a real Flyway migration (V4) like everything
+else, with `serialized_event` as `TEXT` (Hibernate's own default of `VARCHAR(255)` is too small for a
+base64-encoded file payload).
 
 **Indexes.** HNSW on `chunk.embedding` — better recall-per-latency than IVFFlat and, unlike IVFFlat,
 it needs no representative training set, which matters when the index starts empty. GIN on

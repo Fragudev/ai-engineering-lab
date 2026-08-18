@@ -3,7 +3,9 @@
 # Read by scripts/fetch-corpus.sh. Third-party documents are downloaded rather than
 # committed, so this file is the record of what the corpus actually contains.
 #
-# Status: placeholder. Populated in Phase 2, when ingestion exists.
+# Status: placeholder. Ingestion exists as of Phase 2, but populating this file is a demo-corpus/
+# seed-script concern (scripts/fetch-corpus.sh, part of the README's getting-started flow) — deferred
+# to Phase 3, when the demo corpus is actually needed for RAG (docs/roadmap.md).
 # Every entry's license is verified at fetch time, not assumed from this file.
 
 version: 0

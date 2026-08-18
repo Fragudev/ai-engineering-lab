@@ -97,9 +97,120 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
 
+  /api/v1/documents:
+    post:
+      operationId: uploadDocument
+      summary: >
+        Upload a document for asynchronous ingestion (parse → chunk → embed → index over Kafka;
+        docs/architecture.md #10). Scoped to text/plain and text/markdown this phase — an
+        unsupported MIME type is accepted here (validation is async, at the parser stage) and
+        surfaces later as the job's FAILED status with last_error populated, not as a 4xx here.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+      responses:
+        "202":
+          description: >
+            Accepted for async processing. Location points to the ingestion job. Absent if the
+            content hash already existed (see the 200 response instead).
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "200":
+          description: >
+            The same bytes were already uploaded (content-hash dedup) — the existing document is
+            returned and nothing new was created or published.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+    get:
+      operationId: listDocuments
+      summary: List all documents
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+
+  /api/v1/documents/{id}:
+    get:
+      operationId: getDocument
+      summary: Fetch a document
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "200":
+          description: The document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          $ref: "#/components/responses/ProblemDetail"
+    delete:
+      operationId: deleteDocument
+      summary: Delete a document and its chunks
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "204":
+          description: Deleted
+
+  /api/v1/ingestion/jobs/{id}:
+    get:
+      operationId: getIngestionJob
+      summary: >
+        Job status, observable throughout the pipeline: UPLOADED → PARSED → CHUNKED → INDEXED, or
+        FAILED with last_error populated once retries are exhausted at whichever stage failed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionJob"
+        "404":
+          $ref: "#/components/responses/ProblemDetail"
+
 components:
   parameters:
     ConversationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    DocumentId:
       name: id
       in: path
       required: true
@@ -178,6 +289,50 @@ components:
         content:
           type: string
           minLength: 1
+
+    Document:
+      type: object
+      required: [id, sourceUri, title, mimeType, contentHash, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceUri:
+          type: string
+        title:
+          type: string
+        mimeType:
+          type: string
+        contentHash:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, INDEXED, FAILED]
+        createdAt:
+          type: string
+          format: date-time
+
+    IngestionJob:
+      type: object
+      required: [id, documentId, stage, attempts, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        stage:
+          type: string
+          enum: [UPLOADED, PARSED, CHUNKED, INDEXED, FAILED]
+        attempts:
+          type: integer
+        lastError:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
 
     ProblemDetail:
       type: object
