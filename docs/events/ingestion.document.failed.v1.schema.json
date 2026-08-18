@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-engineering-lab/events/ingestion.document.failed.v1.schema.json",
+  "title": "ingestion.document.failed.v1",
+  "type": "object",
+  "required": [
+    "eventId", "type", "source", "subject", "time", "correlationId", "causationId",
+    "documentId", "stage", "errorMessage"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "type": { "const": "ingestion.document.failed.v1" },
+    "source": { "type": "string" },
+    "subject": { "type": "string" },
+    "time": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "causationId": { "type": "string", "format": "uuid" },
+    "documentId": { "type": "string", "format": "uuid" },
+    "stage": { "type": "string", "description": "The topic being processed when retries were exhausted." },
+    "errorMessage": { "type": "string" }
+  },
+  "additionalProperties": false
+}

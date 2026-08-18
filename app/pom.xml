@@ -121,6 +121,17 @@
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-starter-core</artifactId>
     </dependency>
+    <!-- Transactional outbox for Kafka externalization (docs/adr/0005-kafka.md) -->
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-events-jpa</artifactId>
+    </dependency>
+    <!-- Jackson-based EventSerializer, required by spring-modulith-events-jpa's publication
+         registry to (de)serialize outbox rows; not pulled in transitively by events-jpa itself. -->
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-events-jackson</artifactId>
+    </dependency>
 
     <!-- Test -->
     <dependency>
@@ -157,6 +168,11 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-kafka</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

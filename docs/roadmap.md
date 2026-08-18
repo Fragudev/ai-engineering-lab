@@ -11,7 +11,7 @@ than a step toward some distant completion.
 |---|---|---|
 | [0](#phase-0--foundations) | Foundations | Complete |
 | [1](#phase-1--chat-vertical-slice) | Chat vertical slice | Complete |
-| [2](#phase-2--asynchronous-ingestion) | Asynchronous ingestion | Not started |
+| [2](#phase-2--asynchronous-ingestion) | Asynchronous ingestion | Complete |
 | [3](#phase-3--rag) | RAG | Not started |
 | [4](#phase-4--evaluation) | Evaluation | Not started |
 | [5](#phase-5--tools) | Tools | Not started |
@@ -125,17 +125,69 @@ Upload endpoint, transactional outbox via Spring Modulith, Kafka topics, the
 parse → chunk → embed → index pipeline, idempotency, retries, dead-letter topic, job status, and an
 ingestion dashboard.
 
-**ADRs:** [0005](adr/0005-kafka.md) Kafka and event contracts · 0006 chunking strategy.
+**ADRs:** [0005](adr/0005-kafka.md) Kafka and event contracts ·
+[0006](adr/0006-chunking-strategy.md) chunking strategy.
 
 **Acceptance**
 
-- Uploading a document indexes it end to end, with job status observable throughout.
-- Uploading the same file twice does not reindex it (content hash deduplication).
-- A fault injected into the embedding stage exhausts its retries, lands in the dead-letter topic,
-  leaves the job in `FAILED` with a populated `last_error`, and produces a trace showing every
-  attempt.
-- Redelivering a consumed event is a no-op.
-- The whole flow is one connected trace from `POST /documents` to the final chunk.
+- [x] Uploading a document indexes it end to end, with job status observable throughout. Verified
+      live against the full `docker compose` stack (`recorded` embedding profile, since this
+      environment has no LM Studio running): `POST /api/v1/documents` → `202` with a `Location` →
+      polling `GET /api/v1/ingestion/jobs/{id}` through `UPLOADED → PARSED → CHUNKED → INDEXED` →
+      `chunk` row persisted with a real 1024-dim embedding. Also covered by
+      `IngestionFlowIntegrationTest` (Testcontainers, real Kafka + Postgres).
+- [x] Uploading the same file twice does not reindex it (content hash deduplication). Verified live:
+      re-uploading identical bytes returned `200` with no `Location`, the same document id, and no
+      new `chunk`/`document` rows. Also covered by `IngestionFlowIntegrationTest`.
+- [x] A fault injected into the embedding stage exhausts its retries, lands in the dead-letter topic,
+      leaves the job in `FAILED` with a populated `last_error`, and produces a trace showing every
+      attempt. Verified live: LM Studio being unreachable in this environment is itself a real fault
+      — retries backed off, the message landed on `ingestion.chunks.created.v1.dlt` (inspected via
+      `kafka-console-consumer`), and the job reached `FAILED` with `last_error: "Connection refused"`.
+      Also covered by `IngestionFailureIntegrationTest` (a `@TestConfiguration`-overridden
+      `EmbeddingProvider` that always throws), asserting `last_error` contains the injected message.
+- [x] Redelivering a consumed event is a no-op. Covered by `IdempotencyGuardIntegrationTest`, which
+      exercises `IdempotencyGuard` directly against a real Postgres rather than a full raw-Kafka
+      redelivery — see the test's own javadoc for why (avoiding a module-boundary violation from
+      importing `ingestion.internal` types into `app`'s tests, and the separate risk of hand-crafting
+      Spring's exact Kafka JSON+type-header wire format). The two other ingestion tests already prove
+      real Kafka consumption works end to end.
+- [x] The whole flow is one connected trace from `POST /documents` to the final chunk — interpreted
+      and verified precisely, not assumed: every event carries the upload's `correlationId`, and every
+      stage's active span is tagged with it (`io.micrometer.tracing.Tracer`). Queried Tempo directly
+      for a `correlationId` and found every related span across the flow, confirming the filtering
+      guarantee works — but genuinely as **two separate trace IDs** (the HTTP upload request, and the
+      Kafka-externalized publish chain), not one unbroken W3C trace, since Modulith's event
+      externalization runs the Kafka publish asynchronously after transaction commit. That's the
+      honest mechanism this criterion actually rests on.
+
+Five real bugs surfaced only by actually running the stack, not by compiling or code review:
+
+- `spring-modulith-events-jpa`'s outbox needs a Jackson-based `EventSerializer` bean
+  (`spring-modulith-events-jackson`), which isn't pulled in transitively — without it the app fails
+  to start at all.
+- The `document`/`chunk` `metadata` `jsonb` columns, mapped via a hand-written
+  `AttributeConverter<Map, String>` (to sidestep the Hibernate 7 / Jackson 3 `FormatMapper` gap noted
+  during planning), also need `@JdbcTypeCode(SqlTypes.JSON)` on the field — without it Postgres
+  rejects the bind as `varchar` being assigned to a `jsonb` column.
+- The event-publication registry table does not auto-provision itself when
+  `spring.jpa.hibernate.ddl-auto=none` (this project is Flyway-only) — the original plan assumed it
+  would; a V4 migration now creates it explicitly, with `serialized_event` as `TEXT` rather than
+  Hibernate's raw default of `VARCHAR(255)` (too small for a base64-encoded file payload).
+- `IngestionFailureRecoverer`'s `instanceof EventEnvelope` check on the raw Kafka record never
+  matched, so job failures were silently never recorded (the message still reached the DLT correctly,
+  masking the bug): Boot's default listener setup only converts the record to its typed event at
+  `@KafkaListener` parameter binding, so the error-handling path — which runs earlier — only ever
+  sees raw JSON bytes. Rewritten to pull `documentId`/`correlationId`/`eventId` out by field name
+  instead, which every one of the 3 triggering event types names identically.
+- `FailureRecording` was capturing the wrapping `ListenerExecutionFailedException`'s generic message
+  instead of the actual root cause; fixed with `NestedExceptionUtils.getMostSpecificCause`.
+
+Scope notes, named rather than silently dropped: parsing is limited to `text/plain` and
+`text/markdown` (real format parsing is a separate concern); the `Idempotency-Key` HTTP header on
+`POST /documents` is still unhandled (a standing gap shared with Phase 1's endpoints, not a
+Phase-2-specific regression); `scripts/fetch-corpus.sh` / `corpus/MANIFEST.yml` population is
+deferred to Phase 3, when the demo corpus is actually needed.
 
 ---
 

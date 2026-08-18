@@ -1,14 +1,21 @@
 # Event contracts
 
-JSON Schema definitions for every Kafka topic payload. Schemas are the contract: producers validate
-before publishing, consumers validate on receipt, and CI validates the schemas themselves.
+JSON Schema definitions for every Kafka topic payload. Schemas are the contract: the envelope shape
+is fixed, each topic's schema is the full message.
 
-**Status:** planned. Populated in Phase 2 alongside the ingestion pipeline.
+**Status:** implemented in Phase 2. Producer: `@Externalized`-annotated event classes in
+`modules/ingestion/.../internal`, one per topic, using Spring Modulith's event publication registry
+as the transactional outbox (docs/adr/0005-kafka.md). Consumer-side validation against these schemas
+and CI schema linting are not wired up yet — the Java event types are the enforced contract for now;
+adding schema validation at the boundary is natural follow-up work, not done in this phase.
 
 ## Envelope
 
 Every message shares an envelope, modelled on CloudEvents without adopting the full specification.
-Topic-specific schemas define only `payload`.
+**Payload fields are inlined at the top level, not nested under a `payload` key** — a deliberate
+simplification once the events became concrete Java records: a flat record serializes directly via
+Jackson with no custom (de)serializer, and every field is still named and typed by the topic's own
+schema below. Each topic's schema file (`<topic>.schema.json`) is the full message shape.
 
 ```json
 {
@@ -19,7 +26,11 @@ Topic-specific schemas define only `payload`.
   "time": "2026-08-18T10:00:00Z",
   "correlationId": "0192f3a4-...",
   "causationId": "0192f3a4-...",
-  "payload": {}
+  "documentId": "0192f3a4-...",
+  "title": "example.md",
+  "mimeType": "text/markdown",
+  "contentHash": "…sha-256 hex…",
+  "contentBase64": "…"
 }
 ```
 
@@ -41,12 +52,12 @@ parent-child ordering within it.
 
 | Topic | Producer | Consumer | Schema |
 |---|---|---|---|
-| `ingestion.document.uploaded.v1` | api | ingestion · parser | Phase 2 |
-| `ingestion.document.parsed.v1` | ingestion · parser | ingestion · chunker | Phase 2 |
-| `ingestion.chunks.created.v1` | ingestion · chunker | ingestion · embedder | Phase 2 |
-| `ingestion.document.indexed.v1` | ingestion · embedder | job status, UI | Phase 2 |
-| `ingestion.document.failed.v1` | any stage | job status | Phase 2 |
-| `<topic>.dlt` | retry infrastructure | manual inspection | inherits |
+| `ingestion.document.uploaded.v1` | ingestion (`IngestionService`) | ingestion · parser | [schema](ingestion.document.uploaded.v1.schema.json) |
+| `ingestion.document.parsed.v1` | ingestion · parser | ingestion · chunker | [schema](ingestion.document.parsed.v1.schema.json) |
+| `ingestion.chunks.created.v1` | ingestion · chunker | ingestion · embedder | [schema](ingestion.chunks.created.v1.schema.json) |
+| `ingestion.document.indexed.v1` | ingestion · embedder | (no consumer this phase; job status is updated inline by the embedder, not via a separate listener — see docs/roadmap.md Phase 2 scope notes) | [schema](ingestion.document.indexed.v1.schema.json) |
+| `ingestion.document.failed.v1` | whichever stage's retries were exhausted (`IngestionFailureRecoverer`) | same as above | [schema](ingestion.document.failed.v1.schema.json) |
+| `<topic>.dlt` | retry infrastructure (`DeadLetterPublishingRecoverer`) | manual inspection via kafka-ui | inherits |
 
 ## Versioning
 

@@ -3,6 +3,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://postgres:5432/ai_lab
+  kafka:
+    bootstrap-servers: kafka:19092
 
 ai:
   provider:
