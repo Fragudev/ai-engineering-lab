@@ -1,0 +1,45 @@
+app/src/main/java/io/github/fragudev/ailab/ConversationController.java
+  s_f6c2719e97e037::t_987c1f5f73f4a3 73-74
+app/src/main/java/io/github/fragudev/ailab/ConversationResponse.java
+  s_f6c2719e97e037::t_43558136537867 8-9
+app/src/main/java/io/github/fragudev/ailab/UsageSummary.java
+  s_f6c2719e97e037::t_a5bfcf1ab39bbb 8-14
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatChunk.java
+  s_f6c2719e97e037::t_eff4144b2dc008 10-11
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ChatResponse.java
+  s_f6c2719e97e037::t_9c500f9611d129 11-12
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/ProviderCapabilities.java
+  s_f6c2719e97e037::t_f8d7bad8e17393 8-9
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioChatProvider.java
+  s_f6c2719e97e037::t_d7087a1457fb9a 32-33,46-47,79-80,89-91,111-116,132-135,139-141,151-153
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/PromptMapping.java
+  s_f6c2719e97e037::t_946d08c92c0db1 18-19
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/RecordedChatProvider.java
+  s_f6c2719e97e037::t_eecb1b2f6cf448 59-60,77-78
+modules/ai-provider/src/test/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioChatProviderTest.java
+  s_f6c2719e97e037::t_90ebb3dd45db81 38-39
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/Conversation.java
+  s_f6c2719e97e037::t_f5f0574c4fcede 19-20
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/ConversationService.java
+  s_f6c2719e97e037::t_6ee2c5da810821 29-31,60-66,68-72
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/Message.java
+  s_f6c2719e97e037::t_050e3a35a7955c 33-34
+.github/workflows/ci.yml
+  s_f6c2719e97e037::t_d0f8314b41a3a3 24-30,33-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9f89d07d44a28d15a4b787340d7c91fb9d4fef69",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
