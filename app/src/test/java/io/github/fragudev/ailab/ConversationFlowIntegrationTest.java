@@ -68,7 +68,11 @@ class ConversationFlowIntegrationTest {
         HttpResponse<String> streamResponse = postMessage(conversationId, "hello");
 
         assertThat(streamResponse.statusCode()).isEqualTo(200);
-        assertThat(streamResponse.body()).contains("recorded` provider profile");
+        // The fixture text streams token-by-token, one word per SSE "data:" line, so a multi-word
+        // phrase never appears contiguous in the raw body — check a single whole word instead, and
+        // rely on the persisted-message assertions below for the full reconstructed text.
+        assertThat(streamResponse.body()).contains("event:token");
+        assertThat(streamResponse.body()).contains("captured");
         assertThat(streamResponse.body()).contains("recorded-fixture");
         assertThat(streamResponse.body()).contains("event:done");
 
