@@ -34,7 +34,15 @@ public class Conversation {
     }
 
     public Conversation(ConversationId id) {
+        this(id, null);
+    }
+
+    /** {@code ragProfile == null} means plain chat, no retrieval — unchanged Phase 1 behavior; a
+     * non-null value must name one of {@code RagProfiles.all()} (validated at the API edge, since
+     * this module doesn't depend on {@code rag}). */
+    public Conversation(ConversationId id, @Nullable String ragProfile) {
         this.id = id.value();
+        this.ragProfile = ragProfile;
         Instant now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;

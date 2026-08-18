@@ -32,6 +32,11 @@ class ApiExceptionHandler {
         return respond(e);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ProblemDetail> handleIllegalArgument(IllegalArgumentException e) {
+        return respond(e);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ProblemDetail> handleValidation(MethodArgumentNotValidException e) {
         String detail = e.getBindingResult().getFieldErrors().stream()

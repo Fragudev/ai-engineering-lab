@@ -92,6 +92,10 @@ public class Chunk {
         return tokenCount;
     }
 
+    public float[] embedding() {
+        return embedding;
+    }
+
     public Instant createdAt() {
         return createdAt;
     }

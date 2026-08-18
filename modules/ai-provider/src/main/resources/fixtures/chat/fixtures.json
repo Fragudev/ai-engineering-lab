@@ -22,6 +22,12 @@
       "response": "This is a reference application for AI engineering on the JVM: hybrid RAG over pgvector, event-driven ingestion on Kafka, controlled tool calling, MCP, agentic workflows, and an evaluation harness that produces numbers instead of adjectives.",
       "promptTokens": 14,
       "completionTokens": 40
+    },
+    {
+      "matchContains": "what does consumer lag measure",
+      "response": "Consumer lag measures the gap between the last produced offset and the last committed offset for a consumer group in a partition [1]. Monitoring it helps detect when a consumer is falling behind the producers [2].",
+      "promptTokens": 210,
+      "completionTokens": 44
     }
   ]
 }

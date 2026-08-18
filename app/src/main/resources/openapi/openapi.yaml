@@ -16,7 +16,15 @@ paths:
   /api/v1/conversations:
     post:
       operationId: createConversation
-      summary: Start a new conversation
+      summary: >
+        Start a new conversation. An optional ragProfile turns on retrieval-augmented answers for
+        every message sent to it (see docs/architecture.md #9); omitted or null means plain chat,
+        unchanged since Phase 1.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConversationRequest"
       responses:
         "201":
           description: Conversation created
@@ -24,6 +32,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Conversation"
+        "400":
+          $ref: "#/components/responses/ProblemDetail"
 
   /api/v1/conversations/{id}:
     get:
@@ -63,7 +73,9 @@ paths:
       summary: >
         Send a user message and stream the assistant's reply token by token. Phase 1 only
         implements the streaming (Accept: text/event-stream) response; a synchronous JSON variant
-        is part of the documented contract but not built until something needs it.
+        is part of the documented contract but not built until something needs it. If the
+        conversation has a ragProfile (or one is given in the request, overriding it for this
+        turn), the reply is retrieval-augmented and may include `citation` events.
       parameters:
         - $ref: "#/components/parameters/ConversationId"
       requestBody:
@@ -75,15 +87,18 @@ paths:
       responses:
         "200":
           description: >
-            An SSE stream. Event types: `token` (data: a content delta), `usage` (data: a
-            UsageSummary JSON object, sent once as the final event before `done`), `done` (stream
-            finished normally), `error` (data: a ProblemDetail JSON object, e.g. status 504 on a
-            provider timeout; the stream then closes). A mid-stream failure cannot become a real
-            HTTP error status — the response is already a committed 200 SSE stream by the time a
-            provider call can fail — so it surfaces in-band via the `error` event instead; that is
-            what "a typed error, not a hung request" means for this endpoint specifically. Citation
-            and tool_call/tool_result event types are part of the full contract
-            (docs/architecture.md #5) but have no producer until Phase 3/5.
+            An SSE stream. Event types: `token` (data: a content delta — citation markers are never
+            present here, see the `citation` event below), `citation` (data: a Citation JSON object;
+            only emitted when the turn was retrieval-augmented, once per source the model actually
+            cited, sent after the last `token` and before `usage`), `usage` (data: a UsageSummary
+            JSON object, sent once as the final event before `done`), `done` (stream finished
+            normally), `error` (data: a ProblemDetail JSON object, e.g. status 504 on a provider
+            timeout; the stream then closes). A mid-stream failure cannot become a real HTTP error
+            status — the response is already a committed 200 SSE stream by the time a provider call
+            can fail — so it surfaces in-band via the `error` event instead; that is what "a typed
+            error, not a hung request" means for this endpoint specifically. tool_call/tool_result
+            event types are part of the full contract (docs/architecture.md #5) but have no
+            producer until Phase 5.
           content:
             text/event-stream:
               schema:
@@ -200,6 +215,45 @@ paths:
         "404":
           $ref: "#/components/responses/ProblemDetail"
 
+  /api/v1/retrieval:search:
+    post:
+      operationId: searchRetrieval
+      summary: >
+        Debug view into the retrieval pipeline (docs/architecture.md #5): runs normalization,
+        retrieval, fusion and (if the profile enables it) reranking, but never calls the model.
+        Returns the rewritten query and every candidate's scores before and after fusion and
+        reranking — the difference between having built a RAG pipeline and being able to explain
+        what it did.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetrievalSearchRequest"
+      responses:
+        "200":
+          description: The retrieval trace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetrievalTrace"
+        "400":
+          $ref: "#/components/responses/ProblemDetail"
+
+  /api/v1/rag/profiles:
+    get:
+      operationId: listRagProfiles
+      summary: The fixed, named set of RAG profiles selectable per conversation or per request.
+      responses:
+        "200":
+          description: Available profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RagProfile"
+
 components:
   parameters:
     ConversationId:
@@ -247,6 +301,14 @@ components:
           type: string
           format: date-time
 
+    CreateConversationRequest:
+      type: object
+      properties:
+        ragProfile:
+          type: string
+          nullable: true
+          description: Must name one of GET /api/v1/rag/profiles, if given.
+
     Message:
       type: object
       required: [id, conversationId, role, content, createdAt]
@@ -278,6 +340,39 @@ components:
         estimatedCostUsd:
           type: number
           nullable: true
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+        createdAt:
+          type: string
+          format: date-time
+
+    Citation:
+      type: object
+      required: [id, messageId, chunkId, documentId, score, ordinal, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        chunkId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        score:
+          type: number
+        quotedSpan:
+          type: string
+          nullable: true
+          description: Best-effort — the sentence of the generated answer that carried the marker.
+        ordinal:
+          type: integer
+          description: The [N] marker number within that answer.
         createdAt:
           type: string
           format: date-time
@@ -289,6 +384,98 @@ components:
         content:
           type: string
           minLength: 1
+        ragProfile:
+          type: string
+          nullable: true
+          description: >
+            Overrides the conversation's own ragProfile for this turn only. Explicit empty
+            string is not the same as omitted — send null or omit the field to fall back to the
+            conversation's stored profile.
+
+    RagProfile:
+      type: object
+      required:
+        [name, topK, candidatesPerRetriever, lexicalEnabled, rerankStrategy, contextTokenBudget, maxVectorDistance]
+      properties:
+        name:
+          type: string
+        topK:
+          type: integer
+        candidatesPerRetriever:
+          type: integer
+        lexicalEnabled:
+          type: boolean
+        rerankStrategy:
+          type: string
+          enum: [NONE, MMR, LLM]
+        contextTokenBudget:
+          type: integer
+        maxVectorDistance:
+          type: number
+          description: >
+            Abstention gate: the profile declines to answer rather than generate from weak context
+            if the best vector match is farther than this cosine distance. A starting heuristic, not
+            tuned against a golden dataset (Phase 4).
+
+    RetrievalSearchRequest:
+      type: object
+      required: [query, ragProfile]
+      properties:
+        query:
+          type: string
+          minLength: 1
+        ragProfile:
+          type: string
+
+    RetrievalTrace:
+      type: object
+      required: [originalQuery, normalizedQuery, ragProfile, results]
+      properties:
+        originalQuery:
+          type: string
+        normalizedQuery:
+          type: string
+          description: Same as originalQuery when there's no conversation history to fold in.
+        ragProfile:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+
+    SearchResult:
+      type: object
+      required: [chunkId, documentId, content, fusedScore, finalRank]
+      properties:
+        chunkId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        content:
+          type: string
+        vectorDistance:
+          type: number
+          nullable: true
+          description: Null when this candidate was found only by the lexical retriever.
+        lexicalRank:
+          type: number
+          nullable: true
+          description: Postgres ts_rank; null when this candidate was found only by the vector retriever.
+        fusedScore:
+          type: number
+          description: Reciprocal Rank Fusion score, before reranking.
+        rerankScore:
+          type: number
+          nullable: true
+          description: >
+            Present only for MMR reranking — a real relevance/diversity score. Null for
+            RerankStrategy NONE or LLM, since an LLM reranker produces an ordering, not a
+            calibrated score.
+        finalRank:
+          type: integer
+          description: 1-based position in the final returned order, after reranking (or fusion, if none).
 
     Document:
       type: object
