@@ -95,10 +95,20 @@ adapters, conversations, messages, SSE streaming, minimal UI, tracing and token 
       matching on — it can arrive wrapped — so the error fell through to a bare 500 instead of 502.
       Fixed by mapping anything that isn't already one of this adapter's own typed exceptions,
       rather than matching the SDK's exception type exactly.
-- [ ] CI passes without a model server running. `ConversationFlowIntegrationTest` (Testcontainers,
-      `recorded` profile) could not run locally for the same Docker-outside-of-Docker reason as
-      Phase 0's health check test — not a code issue, verified by running the equivalent flow live
-      via `docker compose` instead. Pending confirmation from the actual GitHub Actions run.
+- [x] CI passes without a model server running. Confirmed on the real GitHub Actions run for
+      [PR #2](https://github.com/Fragudev/ai-engineering-lab/pull/2): `ConversationFlowIntegrationTest`
+      (Testcontainers, `recorded` profile) passes under CI's native Docker — this session's local
+      Docker-outside-of-Docker limitation doesn't apply there. Getting to green also caught two real
+      issues that local spot-checks had missed: `spotless:check` formatting violations (verification
+      had only run targeted `compile`/`test` goals locally, never the full `mvnw verify` CI actually
+      runs), and a brittle test assertion checking for a multi-word phrase in the raw SSE response
+      body — the fixture text streams one word per `data:` line, so the phrase is never contiguous;
+      fixed to check single words and rely on the persisted-message assertions for the full text.
+
+CI was also split into three steps instead of one opaque `mvnw verify`: a fail-fast formatting check,
+the build/test, and a `docker build` of `app/Dockerfile` — the actual shippable artifact, which the
+Maven build alone never exercised and which is exactly where this session's Phase 0 and Phase 1 real
+bugs surfaced.
 
 Scope notes: only the `lmstudio` and `recorded` adapters were built, per the roadmap's own wording
 (`openai`/`anthropic` deferred); Resilience4j retry/circuit-breaking deferred to Phase 2, where
