@@ -4,6 +4,11 @@ spring:
   datasource:
     url: jdbc:postgresql://postgres:5432/ai_lab
 
+ai:
+  provider:
+    lmstudio:
+      base-url: http://host.docker.internal:1234/v1
+
 management:
   otlp:
     metrics:

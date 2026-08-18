@@ -1,0 +1,27 @@
+{
+  "default": {
+    "response": "This is a recorded fixture response. The `recorded` provider profile replays captured fixtures instead of calling a live model, which is what CI uses (see docs/architecture.md #8 and scripts/record-fixtures.sh).",
+    "promptTokens": 24,
+    "completionTokens": 38
+  },
+  "cases": [
+    {
+      "matchContains": "hello",
+      "response": "Hello! I'm running against the `recorded` provider profile, so this answer is a captured fixture rather than a live model response.",
+      "promptTokens": 9,
+      "completionTokens": 27
+    },
+    {
+      "matchContains": "spring boot",
+      "response": "Spring Boot is a framework for building production-grade Spring applications with sensible defaults and minimal configuration. This project targets Spring Boot 4.1 on Java 25.",
+      "promptTokens": 12,
+      "completionTokens": 31
+    },
+    {
+      "matchContains": "what is this project",
+      "response": "This is a reference application for AI engineering on the JVM: hybrid RAG over pgvector, event-driven ingestion on Kafka, controlled tool calling, MCP, agentic workflows, and an evaluation harness that produces numbers instead of adjectives.",
+      "promptTokens": 14,
+      "completionTokens": 40
+    }
+  ]
+}

@@ -78,7 +78,18 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-opentelemetry</artifactId>
+    </dependency>
+    <!-- Live spec at /v3/api-docs, checked by eye against the checked-in openapi.yaml for now; an
+         automated contract diff is a follow-up, not built this phase. -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>3.1.0</version>
     </dependency>
 
     <!-- Persistence -->
