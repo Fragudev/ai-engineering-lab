@@ -9,7 +9,7 @@ than a step toward some distant completion.
 
 | Phase | Theme | State |
 |---|---|---|
-| [0](#phase-0--foundations) | Foundations | Not started |
+| [0](#phase-0--foundations) | Foundations | In progress |
 | [1](#phase-1--chat-vertical-slice) | Chat vertical slice | Not started |
 | [2](#phase-2--asynchronous-ingestion) | Asynchronous ingestion | Not started |
 | [3](#phase-3--rag) | RAG | Not started |
@@ -32,10 +32,36 @@ scaffolding, observability wiring, CI pipeline, README and first architecture di
 
 **Acceptance**
 
-- `docker compose up` and `./mvnw verify` both succeed on a clean machine following only the README.
-- ArchUnit and Spring Modulith boundary tests run and pass with the modules empty.
-- A trace from a health check request is visible in Grafana.
-- CI runs the full build on every push.
+- [x] `docker compose up` succeeds: postgres (pgvector), Kafka (KRaft), kafka-ui and the
+      `grafana/otel-lgtm` observability stack all reach a healthy state, and `app` builds and starts
+      against them. Verified locally with a real Java 25 toolchain, via the app's own multi-stage
+      Docker build — the host in this session only had Java 17, so `./mvnw verify` could not be run
+      there directly; see AGENTS.md, Environment constraints.
+- [x] ArchUnit and Spring Modulith boundary tests run and pass with the modules empty. Verified with
+      a real JDK 25 container: `ModuleBoundaryTest` (`ApplicationModules.verify()`) and
+      `ArchitectureTest` both green.
+- [x] A trace from a health check request is visible in Grafana. Verified: `GET /actuator/health`
+      produced a trace queried back through both Tempo's API and Grafana's own datasource proxy,
+      with `rootServiceName: ai-engineering-lab`.
+- [ ] CI runs the full build on every push. `.github/workflows/ci.yml` is written (JDK 25, `./mvnw
+      verify`) but not yet exercised by an actual push — not verifiable from this local session.
+- [ ] `HealthCheckIntegrationTest` (Testcontainers) is written and its assertion was verified
+      manually via `docker compose` (Flyway migrated, `vector` extension installed, health endpoint
+      UP), but running it through `./mvnw test` locally hit a Docker-outside-of-Docker limitation
+      specific to this machine's container runtime (Rancher Desktop) — expected to run cleanly in CI,
+      where Docker is native.
+
+Three real Spring Boot 4.1 / Testcontainers 2.x breaking changes were found and fixed by actually
+building against them, not by inspection: `org.testcontainers:postgresql` and `:junit-jupiter`
+renamed to `testcontainers-postgresql` / `testcontainers-junit-jupiter`; `TestRestTemplate` moved to
+the `spring-boot-resttestclient` module (replaced with `RestTestClient`); and Flyway's
+auto-configuration moved out of `spring-boot-autoconfigure` into its own `spring-boot-starter-flyway`
+module — without it, Flyway silently did nothing (no error, no log line, no migration).
+
+Error Prone + NullAway (AGENTS.md's nullability convention) are deliberately not wired into the build
+yet: enforcing them now would add build fragility with nothing real to check, since every module is
+still an empty package-info skeleton. They'll be added when Phase 1 introduces real logic to enforce
+against, to avoid the scope-creep AGENTS.md rule 6 warns against.
 
 ---
 
