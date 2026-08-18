@@ -9,7 +9,7 @@ than a step toward some distant completion.
 
 | Phase | Theme | State |
 |---|---|---|
-| [0](#phase-0--foundations) | Foundations | In progress |
+| [0](#phase-0--foundations) | Foundations | Complete |
 | [1](#phase-1--chat-vertical-slice) | Chat vertical slice | Not started |
 | [2](#phase-2--asynchronous-ingestion) | Asynchronous ingestion | Not started |
 | [3](#phase-3--rag) | RAG | Not started |
@@ -43,13 +43,12 @@ scaffolding, observability wiring, CI pipeline, README and first architecture di
 - [x] A trace from a health check request is visible in Grafana. Verified: `GET /actuator/health`
       produced a trace queried back through both Tempo's API and Grafana's own datasource proxy,
       with `rootServiceName: ai-engineering-lab`.
-- [ ] CI runs the full build on every push. `.github/workflows/ci.yml` is written (JDK 25, `./mvnw
-      verify`) but not yet exercised by an actual push — not verifiable from this local session.
-- [ ] `HealthCheckIntegrationTest` (Testcontainers) is written and its assertion was verified
-      manually via `docker compose` (Flyway migrated, `vector` extension installed, health endpoint
-      UP), but running it through `./mvnw test` locally hit a Docker-outside-of-Docker limitation
-      specific to this machine's container runtime (Rancher Desktop) — expected to run cleanly in CI,
-      where Docker is native.
+- [x] CI runs the full build on every push. `.github/workflows/ci.yml` (JDK 25, `./mvnw verify`) is
+      green on [PR #1](https://github.com/Fragudev/ai-engineering-lab/pull/1): all 3 tests pass,
+      including `HealthCheckIntegrationTest` — the one that couldn't be verified locally because this
+      session's machine only runs Docker inside a VM (Rancher Desktop), which breaks
+      Docker-outside-of-Docker for Testcontainers; GitHub Actions' native Docker has no such
+      limitation.
 
 Three real Spring Boot 4.1 / Testcontainers 2.x breaking changes were found and fixed by actually
 building against them, not by inspection: `org.testcontainers:postgresql` and `:junit-jupiter`
