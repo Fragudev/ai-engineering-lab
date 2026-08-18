@@ -1,0 +1,103 @@
+.mvn/wrapper/maven-wrapper.properties
+  s_f6c2719e97e037::t_3a4e3726cb4256 1-3
+modules/ai-provider/pom.xml
+  s_f6c2719e97e037::t_e27f58fc659b3c 1-36
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/package-info.java
+  s_f6c2719e97e037::t_5e07d45c0b574c 1-8
+modules/conversation/pom.xml
+  s_f6c2719e97e037::t_d68bd95957d715 1-40
+modules/conversation/src/main/java/io/github/fragudev/ailab/conversation/package-info.java
+  s_f6c2719e97e037::t_4f33dcc5133e5b 1-8
+modules/evaluation/pom.xml
+  s_f6c2719e97e037::t_27afc3a177aa89 1-44
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/package-info.java
+  s_f6c2719e97e037::t_dd74c60dcf9ffb 1-8
+modules/ingestion/pom.xml
+  s_f6c2719e97e037::t_9fa4393c0fa543 1-44
+modules/ingestion/src/main/java/io/github/fragudev/ailab/ingestion/package-info.java
+  s_f6c2719e97e037::t_54478627774c3d 1-8
+modules/knowledge/pom.xml
+  s_f6c2719e97e037::t_11d762a0926e32 1-40
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/package-info.java
+  s_f6c2719e97e037::t_407389382b646a 1-8
+modules/mcp/pom.xml
+  s_f6c2719e97e037::t_3fbbbd1a0b33d7 1-40
+modules/mcp/src/main/java/io/github/fragudev/ailab/mcp/package-info.java
+  s_f6c2719e97e037::t_91036400770db9 1-8
+modules/platform/pom.xml
+  s_f6c2719e97e037::t_fd6345710eb442 1-36
+modules/platform/src/main/java/io/github/fragudev/ailab/platform/package-info.java
+  s_f6c2719e97e037::t_fbc701ebe9fe40 1-8
+modules/rag/pom.xml
+  s_f6c2719e97e037::t_db639002060868 1-44
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/package-info.java
+  s_f6c2719e97e037::t_9432156aae6317 1-8
+modules/shared/pom.xml
+  s_f6c2719e97e037::t_77419968cc3942 1-32
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/package-info.java
+  s_f6c2719e97e037::t_e8075bb95b37d5 1-8
+modules/tools/pom.xml
+  s_f6c2719e97e037::t_4820a23f8f226a 1-36
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/package-info.java
+  s_f6c2719e97e037::t_bc22831f46ed7d 1-8
+modules/workflow/pom.xml
+  s_f6c2719e97e037::t_027847ef1eb04c 1-48
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/package-info.java
+  s_f6c2719e97e037::t_00ef8afa011d7d 1-8
+mvnw
+  s_f6c2719e97e037::t_bfe5ddc11b66a6 1-295
+mvnw.cmd
+  s_f6c2719e97e037::t_c05b40484359f6 1-189
+scripts/bootstrap.sh
+  s_f6c2719e97e037::t_fc7248c9f97e5e 1-64
+.dockerignore
+  s_f6c2719e97e037::t_76ef971b4fabf8 1-9
+.github/workflows/ci.yml
+  s_f6c2719e97e037::t_23268a25b5cf8b 1-28
+.mvn/maven.config
+  s_f6c2719e97e037::t_51b26090ad1ad9 1
+.mvn/settings.xml
+  s_f6c2719e97e037::t_99c56576e31e8e 1-11
+app/Dockerfile
+  s_f6c2719e97e037::t_076c7565989eb7 1-16
+app/pom.xml
+  s_f6c2719e97e037::t_1dd73b9de76c2a 1-162
+app/src/main/java/io/github/fragudev/ailab/AiEngineeringLabApplication.java
+  s_f6c2719e97e037::t_9ee439413b7f20 1-17
+app/src/main/resources/application-docker.yml
+  s_f6c2719e97e037::t_95c909379892b9 1-20
+app/src/main/resources/application.yml
+  s_f6c2719e97e037::t_97670ad883e3b8 1-53
+app/src/main/resources/db/migration/V1__enable_pgvector_extension.sql
+  s_f6c2719e97e037::t_851f20c685bbbd 1-3
+app/src/main/resources/openapi/openapi.yaml
+  s_f6c2719e97e037::t_446093317fe414 1-14
+app/src/test/java/io/github/fragudev/ailab/ArchitectureTest.java
+  s_f6c2719e97e037::t_6734260612cc15 1-51
+app/src/test/java/io/github/fragudev/ailab/HealthCheckIntegrationTest.java
+  s_f6c2719e97e037::t_daa82a66e9446c 1-49
+app/src/test/java/io/github/fragudev/ailab/ModuleBoundaryTest.java
+  s_f6c2719e97e037::t_6248fa7553873b 1-25
+infrastructure/docker-compose.yml
+  s_f6c2719e97e037::t_3f5783ae534133 1-93
+pom.xml
+  s_f6c2719e97e037::t_3747e223cbe979 1-189
+docs/roadmap.md
+  s_f6c2719e97e037::t_a62627612bce39 12,35-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "558d6df4f7a707b2449c45eeb26fea4c06761574",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
