@@ -30,6 +30,12 @@
       <groupId>io.github.fragudev.ailab</groupId>
       <artifactId>knowledge</artifactId>
     </dependency>
+    <!-- RAG chat routes tool calling through tools.ToolCallingChatService instead of calling
+         ChatProvider directly — Phase 5, ADR-0009. -->
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>tools</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>

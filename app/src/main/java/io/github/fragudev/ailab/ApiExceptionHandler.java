@@ -1,6 +1,8 @@
 package io.github.fragudev.ailab;
 
 import io.github.fragudev.ailab.shared.ProviderException;
+import io.github.fragudev.ailab.shared.ToolAuthorizationException;
+import io.github.fragudev.ailab.shared.ToolTimeoutException;
 import java.util.NoSuchElementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +36,16 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<ProblemDetail> handleIllegalArgument(IllegalArgumentException e) {
+        return respond(e);
+    }
+
+    @ExceptionHandler(ToolAuthorizationException.class)
+    ResponseEntity<ProblemDetail> handleToolAuthorization(ToolAuthorizationException e) {
+        return respond(e);
+    }
+
+    @ExceptionHandler(ToolTimeoutException.class)
+    ResponseEntity<ProblemDetail> handleToolTimeout(ToolTimeoutException e) {
         return respond(e);
     }
 

@@ -28,6 +28,28 @@
       "response": "Consumer lag measures the gap between the last produced offset and the last committed offset for a consumer group in a partition [1]. Monitoring it helps detect when a consumer is falling behind the producers [2].",
       "promptTokens": 210,
       "completionTokens": 44
+    },
+    {
+      "matchContains": "what is 12 times 7",
+      "response": "{\"tool_call\":{\"name\":\"calculator\",\"arguments\":{\"expression\":\"12 * 7\"}}}",
+      "promptTokens": 40,
+      "completionTokens": 18,
+      "followUp": {
+        "response": "12 times 7 is 84.",
+        "promptTokens": 55,
+        "completionTokens": 8
+      }
+    },
+    {
+      "matchContains": "what's the weather in paris",
+      "response": "{\"tool_call\":{\"name\":\"mock-weather\",\"arguments\":{\"city\":\"Paris\"}}}",
+      "promptTokens": 38,
+      "completionTokens": 17,
+      "followUp": {
+        "response": "Here's the current weather I found for Paris.",
+        "promptTokens": 60,
+        "completionTokens": 10
+      }
     }
   ]
 }

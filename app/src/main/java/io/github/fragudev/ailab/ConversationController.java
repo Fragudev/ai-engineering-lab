@@ -4,6 +4,7 @@ import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.conversation.CitationInput;
 import io.github.fragudev.ailab.conversation.Conversation;
 import io.github.fragudev.ailab.conversation.ConversationService;
+import io.github.fragudev.ailab.conversation.Message;
 import io.github.fragudev.ailab.rag.RagAnswer;
 import io.github.fragudev.ailab.rag.RagAnswerChunk;
 import io.github.fragudev.ailab.rag.RagCitationResult;
@@ -11,6 +12,8 @@ import io.github.fragudev.ailab.rag.RagPipeline;
 import io.github.fragudev.ailab.rag.RagProfile;
 import io.github.fragudev.ailab.shared.ConversationId;
 import io.github.fragudev.ailab.shared.DocumentId;
+import io.github.fragudev.ailab.tools.ToolChatChunk;
+import io.github.fragudev.ailab.tools.ToolInvoker;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.time.Duration;
@@ -37,10 +40,12 @@ class ConversationController {
 
     private final ConversationService conversationService;
     private final RagPipeline ragPipeline;
+    private final ToolInvoker toolInvoker;
 
-    ConversationController(ConversationService conversationService, RagPipeline ragPipeline) {
+    ConversationController(ConversationService conversationService, RagPipeline ragPipeline, ToolInvoker toolInvoker) {
         this.conversationService = conversationService;
         this.ragPipeline = ragPipeline;
+        this.toolInvoker = toolInvoker;
     }
 
     @PostMapping
@@ -103,15 +108,42 @@ class ConversationController {
         return emitter;
     }
 
-    private static void onChunk(
-            SseEmitter emitter, io.github.fragudev.ailab.aiprovider.ChatChunk chunk, @Nullable String traceId) {
+    // Persistence for the plain-chat path (including tool invocations) already happens inside
+    // ConversationService.sendMessage itself, since that module owns ChatProvider directly — this
+    // just renders SSE events. The RAG path is the opposite (rag doesn't depend on conversation),
+    // so persistRagAnswer below does it here, same asymmetry this class already had pre-Phase 5.
+    private static void onChunk(SseEmitter emitter, ToolChatChunk chunk, @Nullable String traceId) {
         try {
             if (chunk.last()) {
-                emitter.send(SseEmitter.event()
-                        .name("usage")
-                        .data(UsageSummary.from(chunk.aggregate(), traceId), MediaType.APPLICATION_JSON));
-            } else {
-                emitter.send(SseEmitter.event().name("token").data(chunk.deltaContent()));
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("usage")
+                            .data(UsageSummary.from(chunk.aggregate(), traceId), MediaType.APPLICATION_JSON));
+                }
+            } else if (chunk.toolCall() != null) {
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("tool_call")
+                            .data(ToolCallEvent.from(chunk.toolCall()), MediaType.APPLICATION_JSON));
+                }
+            } else if (chunk.toolResult() != null) {
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("tool_result")
+                            .data(ToolResultEvent.from(chunk.toolResult()), MediaType.APPLICATION_JSON));
+                }
+            } else if (chunk.pendingConfirmation() != null) {
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("tool_call_pending")
+                            .data(
+                                    ToolPendingConfirmationEvent.from(chunk.pendingConfirmation()),
+                                    MediaType.APPLICATION_JSON));
+                }
+            } else if (!chunk.deltaContent().isEmpty()) {
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event().name("token").data(chunk.deltaContent()));
+                }
             }
         } catch (IOException e) {
             emitter.completeWithError(e);
@@ -124,15 +156,41 @@ class ConversationController {
             if (chunk.last()) {
                 RagAnswer answer = chunk.aggregate();
                 persistRagAnswer(conversationId, answer);
-                emitter.send(SseEmitter.event()
-                        .name("usage")
-                        .data(UsageSummary.from(answer, traceId), MediaType.APPLICATION_JSON));
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("usage")
+                            .data(UsageSummary.from(answer, traceId), MediaType.APPLICATION_JSON));
+                }
             } else if (chunk.citation() != null) {
-                emitter.send(SseEmitter.event()
-                        .name("citation")
-                        .data(CitationEvent.from(chunk.citation()), MediaType.APPLICATION_JSON));
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("citation")
+                            .data(CitationEvent.from(chunk.citation()), MediaType.APPLICATION_JSON));
+                }
+            } else if (chunk.toolCall() != null) {
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("tool_call")
+                            .data(ToolCallEvent.from(chunk.toolCall()), MediaType.APPLICATION_JSON));
+                }
+            } else if (chunk.toolResult() != null) {
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("tool_result")
+                            .data(ToolResultEvent.from(chunk.toolResult()), MediaType.APPLICATION_JSON));
+                }
+            } else if (chunk.pendingConfirmation() != null) {
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event()
+                            .name("tool_call_pending")
+                            .data(
+                                    ToolPendingConfirmationEvent.from(chunk.pendingConfirmation()),
+                                    MediaType.APPLICATION_JSON));
+                }
             } else if (!chunk.deltaContent().isEmpty()) {
-                emitter.send(SseEmitter.event().name("token").data(chunk.deltaContent()));
+                synchronized (emitter) {
+                    emitter.send(SseEmitter.event().name("token").data(chunk.deltaContent()));
+                }
             }
         } catch (IOException e) {
             emitter.completeWithError(e);
@@ -143,7 +201,7 @@ class ConversationController {
         List<CitationInput> citations = answer.citations().stream()
                 .map(ConversationController::toCitationInput)
                 .toList();
-        conversationService.recordAssistantAnswer(
+        Message message = conversationService.recordAssistantAnswer(
                 conversationId,
                 answer.content(),
                 answer.model(),
@@ -152,6 +210,7 @@ class ConversationController {
                 answer.latency().toMillis(),
                 answer.estimatedCostUsd(),
                 citations);
+        answer.toolInvocations().forEach(result -> toolInvoker.recordForMessage(message.id(), result));
     }
 
     private static CitationInput toCitationInput(RagCitationResult citation) {
@@ -161,7 +220,10 @@ class ConversationController {
 
     private static void onError(SseEmitter emitter, Throwable error) {
         try {
-            emitter.send(SseEmitter.event().name("error").data(ProblemDetails.of(error), MediaType.APPLICATION_JSON));
+            synchronized (emitter) {
+                emitter.send(
+                        SseEmitter.event().name("error").data(ProblemDetails.of(error), MediaType.APPLICATION_JSON));
+            }
         } catch (IOException ignored) {
             // The client is already gone; nothing left to notify.
         }
@@ -170,7 +232,9 @@ class ConversationController {
 
     private static void onComplete(SseEmitter emitter) {
         try {
-            emitter.send(SseEmitter.event().name("done").data(""));
+            synchronized (emitter) {
+                emitter.send(SseEmitter.event().name("done").data(""));
+            }
         } catch (IOException ignored) {
             // The client is already gone; nothing left to notify.
         }

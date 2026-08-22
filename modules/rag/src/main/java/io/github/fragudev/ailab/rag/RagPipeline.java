@@ -2,7 +2,6 @@ package io.github.fragudev.ailab.rag;
 
 import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
-import io.github.fragudev.ailab.aiprovider.ChatRequest;
 import io.github.fragudev.ailab.aiprovider.ChatResponse;
 import io.github.fragudev.ailab.aiprovider.TokenUsage;
 import io.github.fragudev.ailab.knowledge.HybridSearchOptions;
@@ -11,6 +10,10 @@ import io.github.fragudev.ailab.knowledge.SearchResult;
 import io.github.fragudev.ailab.rag.internal.CitationExtractor;
 import io.github.fragudev.ailab.rag.internal.ContextBuilder;
 import io.github.fragudev.ailab.rag.internal.QueryNormalizer;
+import io.github.fragudev.ailab.tools.ToolCallOrigin;
+import io.github.fragudev.ailab.tools.ToolCallingChatService;
+import io.github.fragudev.ailab.tools.ToolChatChunk;
+import io.github.fragudev.ailab.tools.ToolRegistry;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -40,16 +43,22 @@ public class RagPipeline {
     private final HybridSearchService hybridSearchService;
     private final ContextBuilder contextBuilder;
     private final ChatProvider chatProvider;
+    private final ToolCallingChatService toolCallingChatService;
+    private final ToolRegistry toolRegistry;
 
     public RagPipeline(
             QueryNormalizer queryNormalizer,
             HybridSearchService hybridSearchService,
             ContextBuilder contextBuilder,
-            ChatProvider chatProvider) {
+            ChatProvider chatProvider,
+            ToolCallingChatService toolCallingChatService,
+            ToolRegistry toolRegistry) {
         this.queryNormalizer = queryNormalizer;
         this.hybridSearchService = hybridSearchService;
         this.contextBuilder = contextBuilder;
         this.chatProvider = chatProvider;
+        this.toolCallingChatService = toolCallingChatService;
+        this.toolRegistry = toolRegistry;
     }
 
     /** {@code history} is the turn history exactly as sent to a plain {@code ChatProvider} call —
@@ -60,7 +69,13 @@ public class RagPipeline {
 
         if (shouldAbstain(results, profile)) {
             RagAnswer insufficientAnswer = new RagAnswer(
-                    INSUFFICIENT_CONTEXT_ANSWER, List.of(), "none", TokenUsage.zero(), Duration.ZERO, BigDecimal.ZERO);
+                    INSUFFICIENT_CONTEXT_ANSWER,
+                    List.of(),
+                    List.of(),
+                    "none",
+                    TokenUsage.zero(),
+                    Duration.ZERO,
+                    BigDecimal.ZERO);
             return Flux.just(
                     RagAnswerChunk.delta(INSUFFICIENT_CONTEXT_ANSWER), RagAnswerChunk.last(insufficientAnswer));
         }
@@ -74,13 +89,24 @@ public class RagPipeline {
 
         CitationExtractor extractor = new CitationExtractor();
 
-        return chatProvider.stream(new ChatRequest(augmented)).concatMap(chunk -> {
-            if (chunk.last()) {
-                return Flux.fromIterable(finalizeAnswer(chunk.aggregate(), context, extractor));
-            }
-            String stripped = extractor.stripDelta(chunk.deltaContent());
-            return stripped.isEmpty() ? Flux.empty() : Flux.just(RagAnswerChunk.delta(stripped));
-        });
+        return toolCallingChatService.stream(
+                        chatProvider, augmented, toolRegistry.definitions(), ToolCallOrigin.RAG_CONTEXT, null)
+                .concatMap(chunk -> {
+                    if (chunk.last()) {
+                        return Flux.fromIterable(finalizeAnswer(chunk, context, extractor));
+                    }
+                    if (chunk.toolCall() != null) {
+                        return Flux.just(RagAnswerChunk.toolCall(chunk.toolCall()));
+                    }
+                    if (chunk.toolResult() != null) {
+                        return Flux.just(RagAnswerChunk.toolResult(chunk.toolResult()));
+                    }
+                    if (chunk.pendingConfirmation() != null) {
+                        return Flux.just(RagAnswerChunk.pendingConfirmation(chunk.pendingConfirmation()));
+                    }
+                    String stripped = extractor.stripDelta(chunk.deltaContent());
+                    return stripped.isEmpty() ? Flux.empty() : Flux.just(RagAnswerChunk.delta(stripped));
+                });
     }
 
     /** The debug view: runs retrieval (and reranking) but never calls the model —
@@ -92,7 +118,8 @@ public class RagPipeline {
     }
 
     private static List<RagAnswerChunk> finalizeAnswer(
-            ChatResponse aggregate, ContextBuilder.Context context, CitationExtractor extractor) {
+            ToolChatChunk lastChunk, ContextBuilder.Context context, CitationExtractor extractor) {
+        ChatResponse aggregate = lastChunk.aggregate();
         List<RagAnswerChunk> out = new ArrayList<>();
         String leftover = extractor.flushRemaining();
         if (!leftover.isEmpty()) {
@@ -108,6 +135,7 @@ public class RagPipeline {
         RagAnswer ragAnswer = new RagAnswer(
                 CitationExtractor.stripAll(aggregate.content()),
                 citations,
+                lastChunk.toolInvocations(),
                 aggregate.model(),
                 aggregate.usage(),
                 aggregate.latency(),

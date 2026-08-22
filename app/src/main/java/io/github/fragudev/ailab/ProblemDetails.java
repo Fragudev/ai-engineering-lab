@@ -2,6 +2,8 @@ package io.github.fragudev.ailab;
 
 import io.github.fragudev.ailab.shared.ProviderTimeoutException;
 import io.github.fragudev.ailab.shared.ProviderUnavailableException;
+import io.github.fragudev.ailab.shared.ToolAuthorizationException;
+import io.github.fragudev.ailab.shared.ToolTimeoutException;
 import java.util.NoSuchElementException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -20,11 +22,14 @@ final class ProblemDetails {
     }
 
     static HttpStatus statusFor(Throwable error) {
-        if (error instanceof ProviderTimeoutException) {
+        if (error instanceof ProviderTimeoutException || error instanceof ToolTimeoutException) {
             return HttpStatus.GATEWAY_TIMEOUT;
         }
         if (error instanceof ProviderUnavailableException) {
             return HttpStatus.BAD_GATEWAY;
+        }
+        if (error instanceof ToolAuthorizationException) {
+            return HttpStatus.FORBIDDEN;
         }
         if (error instanceof NoSuchElementException) {
             return HttpStatus.NOT_FOUND;

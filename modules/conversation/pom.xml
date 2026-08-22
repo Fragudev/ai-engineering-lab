@@ -26,6 +26,12 @@
       <groupId>io.github.fragudev.ailab</groupId>
       <artifactId>ai-provider</artifactId>
     </dependency>
+    <!-- Plain (non-RAG) chat routes tool calling through tools.ToolCallingChatService instead of
+         calling ChatProvider directly — Phase 5, ADR-0009. -->
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>tools</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>

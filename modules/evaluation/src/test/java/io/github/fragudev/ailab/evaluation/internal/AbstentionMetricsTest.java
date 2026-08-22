@@ -13,7 +13,13 @@ class AbstentionMetricsTest {
 
     private static RagAnswer answerWithModel(String model) {
         return new RagAnswer(
-                "some content", List.of(), model, new TokenUsage(10, 5), Duration.ofMillis(1), BigDecimal.ZERO);
+                "some content",
+                List.of(),
+                List.of(),
+                model,
+                new TokenUsage(10, 5),
+                Duration.ofMillis(1),
+                BigDecimal.ZERO);
     }
 
     @Test
