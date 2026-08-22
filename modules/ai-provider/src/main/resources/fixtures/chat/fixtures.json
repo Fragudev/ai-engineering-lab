@@ -50,6 +50,30 @@
         "promptTokens": 60,
         "completionTokens": 10
       }
+    },
+    {
+      "matchContains": "passage: what is the boiling point of water?",
+      "response": "Water boils at 100 degrees Celsius at sea level.",
+      "promptTokens": 30,
+      "completionTokens": 10
+    },
+    {
+      "matchContains": "passage: what is dry ice made of?",
+      "response": "Dry ice is solid carbon dioxide.",
+      "promptTokens": 28,
+      "completionTokens": 7
+    },
+    {
+      "matchContains": "[1] water boils at 100 degrees celsius",
+      "response": "Water boils at 100 degrees Celsius at sea level [1], and dry ice is solid carbon dioxide [2].",
+      "promptTokens": 46,
+      "completionTokens": 20
+    },
+    {
+      "matchContains": "what is the boiling point of water and what is dry ice made of",
+      "response": "What is the boiling point of water?\nWhat is dry ice made of?",
+      "promptTokens": 22,
+      "completionTokens": 15
     }
   ]
 }

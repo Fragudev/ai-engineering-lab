@@ -127,8 +127,15 @@ Unbounded token consumption through long conversations, large uploads or workflo
 locally, expensive against a paid provider.
 
 *Mitigations (planned):* per-request and per-conversation token budgets; context window enforced at
-build time, not discovered at the API; rate limiting per endpoint; hard step limit on workflow runs;
-cost metrics with alerting thresholds; upload size and page count limits.
+build time, not discovered at the API; rate limiting per endpoint; cost metrics with alerting
+thresholds; upload size and page count limits.
+
+**Hard step limit on workflow runs — built Phase 6.** `ai.workflow.max-llm-calls-per-run` (default
+20) is checked incrementally as `workflow.internal.DocumentationResearchEngine` issues each LLM call;
+exceeding it compensates the run (a clean `FAILED` state, not a runaway loop). A reasoned starting
+bound, not tuned against any dataset, and scoped per engine invocation — not cumulative across a
+restart+resume (docs/adr/0010-agent-orchestration.md names this limitation explicitly). The first of
+this threat's several planned mitigations to move to implemented.
 
 ### T6 — Knowledge base poisoning
 

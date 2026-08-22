@@ -30,9 +30,23 @@
       <groupId>io.github.fragudev.ailab</groupId>
       <artifactId>rag</artifactId>
     </dependency>
+    <!-- Real edge, found during Phase 6 implementation, not just an incidental transitive jar:
+         RagPipeline.search's own return type (RetrievalTrace) carries knowledge.SearchResult/Chunk
+         directly, and the retrieve stage genuinely reads them (chunk id/document id/content) to
+         deduplicate and cap sources before extraction. docs/architecture.md #3's table didn't list
+         this edge; corrected in docs/adr/0010-agent-orchestration.md, the same kind of correction
+         ADR-0009 made for tools -> ai-provider in Phase 5. -->
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>knowledge</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.github.fragudev.ailab</groupId>
       <artifactId>tools</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>

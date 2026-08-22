@@ -15,7 +15,7 @@ than a step toward some distant completion.
 | [3](#phase-3--rag) | RAG | Complete |
 | [4](#phase-4--evaluation) | Evaluation | Complete |
 | [5](#phase-5--tools) | Tools | Complete |
-| [6](#phase-6--agentic-workflow) | Agentic workflow | Not started |
+| [6](#phase-6--agentic-workflow) | Agentic workflow | Complete |
 | [7](#phase-7--mcp) | MCP | Not started |
 | [8](#phase-8--hardening-and-presentation) | Hardening and presentation | Not started |
 
@@ -418,14 +418,55 @@ One workflow — *documentation research*: plan sub-queries → retrieve in para
 source → synthesise → self-check against citations → answer. An explicit state machine with
 persisted state, compensation, and resumability.
 
-**ADR:** 0010 agent orchestration — where determinism beats autonomy, and why.
+**ADR:** [0010](adr/0010-agent-orchestration.md) agent orchestration — where determinism beats
+autonomy, and why. Documents which steps need an LLM (`plan-sub-queries`, `extract-per-source`,
+`synthesise`) vs. stayed deterministic (`retrieve`, `self-check`, `answer`), the workflow-owns-its-loop
+composition pattern (ADR-0009's precedent), and a real dependency-table correction found during
+implementation (`workflow → knowledge`, the same category of gap ADR-0009 fixed for `tools →
+ai-provider`).
 
 **Acceptance**
 
-- A run survives an application restart and resumes from its last completed step.
-- Each step's input, output, attempts and cost are inspectable.
-- A failing step triggers compensation rather than leaving a partial result.
-- The ADR documents which steps genuinely need an LLM and which were kept deterministic.
+- [x] A run survives an application restart and resumes from its last completed step. Verified live
+      against a real `docker compose` deployment (`recorded` profile): seeded a `WorkflowRun`
+      directly in Postgres with `plan-sub-queries` and `retrieve` already `SUCCEEDED` (simulating an
+      interrupted process), `docker kill -s SIGKILL` on the running app container, restarted it, and
+      confirmed via `GET /api/v1/workflows/runs/{id}` that execution resumed from `extract-per-source`
+      — the two already-completed steps' timestamps were untouched, proving they were skipped, not
+      redone. `WorkflowRunIntegrationTest`/`WorkflowCompensationIntegrationTest` cover the
+      surrounding mechanics (persistence, compensation) under Testcontainers; a genuine mid-flight
+      process interruption isn't reproduced in the automated suite — see ADR-0010's Trade-offs for
+      why (the `recorded` profile's fixture-backed LLM calls resolve too fast to reliably catch a run
+      mid-stage without test-only production hooks this project doesn't add).
+- [x] Each step's input, output, attempts and cost are inspectable. Verified in
+      `WorkflowRunIntegrationTest` (all six steps present with real attempts/cost) and live via
+      `GET /api/v1/workflows/runs/{id}`'s nested `steps` array.
+- [x] A failing step triggers compensation rather than leaving a partial result. Verified in
+      `WorkflowCompensationIntegrationTest` (an empty knowledge base's `retrieve` stage exhausts its
+      retries, the run ends `FAILED` with `failedStage`/`reason` populated, not left `RUNNING`) and
+      live, twice over — see the real bug below, caught by the exact same mechanism.
+- [x] The ADR documents which steps genuinely need an LLM and which were kept deterministic — see
+      ADR-0010's table.
+
+One real bug surfaced only by the live restart check, not by the unit or integration test suite
+(which never happened to exercise the corrective-retry path with a fixture that produces *invalid*
+citation markers): `DocumentationResearchEngine.synthesiseStage`'s corrective-retry prompt was built
+as `"A" + "B".formatted(x, y)` — Java parses this as `"A" + ("B".formatted(x, y))`, so `.formatted`
+bound only to the second string literal, which has one `%d` placeholder, and got called with two
+arguments (`Set<Integer>`, `int`) — `IllegalFormatConversionException`, surfaced as the compensated
+run's `reason`: `"d != java.util.LinkedHashSet"`. Fixed by parenthesizing the full concatenated
+string before calling `.formatted(...)`. The same live check, rerun after the fix, completed
+end-to-end successfully. This is the same pattern Phase 5's two real bugs followed — caught by
+running the thing for real, not by code review or the pure-unit-test suite, which used simpler
+inputs that never happened to trigger the corrective-retry branch.
+
+Scope reductions, named rather than silently dropped (see ADR-0010's Trade-offs section for the
+reasoning behind each): the LLM-call budget resets per engine invocation, not cumulatively across a
+restart+resume; fan-out sub-task attempts (one retrieval per sub-query, one extraction per source)
+aren't separately queryable rows, only visible inside their owning stage's output JSON; no separate
+`COMPENSATING`/`COMPENSATED` status, since every stage is read-only/computational; one workflow type
+only (`documentation-research`); no list-runs or list-steps endpoint; `workflow → tools` stays a real,
+declared dependency (matches architecture.md) that this one workflow doesn't exercise.
 
 ---
 

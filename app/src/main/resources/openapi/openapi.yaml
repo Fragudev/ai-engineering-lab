@@ -343,6 +343,66 @@ paths:
           description: Unknown, already-resolved, or expired callId.
           $ref: "#/components/responses/ProblemDetail"
 
+  /api/v1/workflows/{type}/runs:
+    post:
+      operationId: startWorkflowRun
+      summary: >
+        Start an agentic workflow run (docs/roadmap.md, Phase 6). Persisted immediately and executed
+        asynchronously — a run can take minutes and must survive an application restart
+        (docs/architecture.md #2), so this returns as soon as the run is durably queued, not once it
+        finishes.
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [documentation-research]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRunRequest"
+      responses:
+        "202":
+          description: Accepted. Location points to the run.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRun"
+        "400":
+          description: Unknown workflow type.
+          $ref: "#/components/responses/ProblemDetail"
+
+  /api/v1/workflows/runs/{id}:
+    get:
+      operationId: getWorkflowRun
+      summary: >
+        A run's current state, with every stage's input, output, attempts and cost nested inline
+        (docs/roadmap.md Phase 6 acceptance criterion 2) — no separate steps endpoint.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRun"
+        "404":
+          $ref: "#/components/responses/ProblemDetail"
+
 components:
   parameters:
     ConversationId:
@@ -656,6 +716,82 @@ components:
       properties:
         approved:
           type: boolean
+
+    WorkflowRunRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+
+    WorkflowRun:
+      type: object
+      required: [id, type, status, input, correlationId, steps, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [documentation-research]
+        status:
+          type: string
+          enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+        input:
+          type: object
+          additionalProperties: true
+        output:
+          type: object
+          nullable: true
+          additionalProperties: true
+        correlationId:
+          type: string
+          format: uuid
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStep"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkflowStep:
+      type: object
+      required: [id, stepIndex, name, status, attempts, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        stepIndex:
+          type: integer
+        name:
+          type: string
+          enum: [plan-sub-queries, retrieve, extract-per-source, synthesise, self-check, answer]
+        status:
+          type: string
+          enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+        input:
+          type: object
+          nullable: true
+          additionalProperties: true
+        output:
+          type: object
+          nullable: true
+          additionalProperties: true
+        attempts:
+          type: integer
+        costUsd:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     ProblemDetail:
       type: object
