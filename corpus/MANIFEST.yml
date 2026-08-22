@@ -3,21 +3,30 @@
 # Read by scripts/fetch-corpus.sh. Third-party documents are downloaded rather than
 # committed, so this file is the record of what the corpus actually contains.
 #
-# Status: placeholder. Ingestion exists as of Phase 2, but populating this file is a demo-corpus/
-# seed-script concern (scripts/fetch-corpus.sh, part of the README's getting-started flow) — deferred
-# to Phase 3, when the demo corpus is actually needed for RAG (docs/roadmap.md).
-# Every entry's license is verified at fetch time, not assumed from this file.
-
-version: 0
-retrieved_at: null # set by fetch-corpus.sh
-
-sources: []
-# Shape of an entry, for reference:
+# Status: populated in Phase 4. Every entry's license is verified at fetch time, not assumed from
+# this file — sha256 and retrieved_at below are filled in by scripts/fetch-corpus.sh, not by hand.
 #
-# - id: spring-boot-reference
-#   title: Spring Boot Reference Documentation
-#   url: https://...
-#   license: Apache-2.0
-#   license_url: https://...
-#   sha256: null          # recorded at fetch time; makes the corpus reproducible
-#   tags: [spring, framework]
+# Sources were chosen for: a permissive license; real technical documentation matching this
+# project's own stack (so ADR-0003/ADR-0007's own claims are independently checkable against the
+# corpus); verifiable, factual content (unambiguous ground truth for the golden dataset); and
+# exact-term density (class names, config keys, error codes — where dense retrieval is weakest).
+# See corpus/ATTRIBUTION.md.
+
+version: 1
+retrieved_at: 2026-08-22T09:08:44Z # set by fetch-corpus.sh
+
+sources:
+  - id: pgvector
+    title: pgvector README
+    url: https://raw.githubusercontent.com/pgvector/pgvector/master/README.md
+    license: PostgreSQL
+    license_url: https://github.com/pgvector/pgvector/blob/master/LICENSE
+    sha256: 54cb3a5f4344308476cb2378469ac77d10fbff415d1b5be66608bb386ce8f527
+    tags: [postgres, pgvector, vector-search, indexing]
+  - id: kafka-ui
+    title: UI for Apache Kafka README
+    url: https://raw.githubusercontent.com/provectus/kafka-ui/master/README.md
+    license: Apache-2.0
+    license_url: https://github.com/provectus/kafka-ui/blob/master/LICENSE
+    sha256: 7358e40a96a4fe9fcfc64501a8c2e5ac673590e6d75621d0bc75ea1889d1c59f
+    tags: [kafka, kafka-ui, observability]

@@ -1,0 +1,215 @@
+# Golden dataset for the evaluation harness (docs/roadmap.md Phase 4, docs/ai-evaluation.md).
+#
+# 28 cases over the two real corpus sources (corpus/MANIFEST.yml: pgvector, kafka-ui) — a real,
+# individually-verified set rather than the aspirational "roughly fifty" ai-evaluation.md describes;
+# see docs/roadmap.md's Phase 4 scope notes for why. Every question/expected_answer/goldChunkRefs
+# triple below was written against the actual fetched content and the actual deterministic chunk
+# boundaries Chunker (Phase 2) produces for it — not guessed.
+#
+# goldChunkRefs use "title#ordinal" (see evaluation.internal.GoldChunkResolver), where title is the
+# document title scripts/seed.sh sets (= the corpus manifest id) and ordinal is the chunk's 0-based
+# packing order. unanswerable-category cases have no gold refs by design: there's nothing in the
+# corpus for the pipeline to be graded on finding.
+name: core
+version: "1"
+cases:
+  # ---- factual_single_hop (~40%) ----
+  - key: pgvector-cosine-operator
+    question: "What SQL operator does pgvector use for cosine distance?"
+    expectedAnswer: "The `<=>` operator."
+    goldChunkRefs: ["pgvector#2"]
+    tags: [factual, pgvector, operators]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-hnsw-ef-search-default
+    question: "What is the default value of hnsw.ef_search in pgvector?"
+    expectedAnswer: "40."
+    goldChunkRefs: ["pgvector#3"]
+    tags: [factual, pgvector, hnsw]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-ivfflat-probes-default
+    question: "What is the default number of probes for an IVFFlat index query in pgvector?"
+    expectedAnswer: "1."
+    goldChunkRefs: ["pgvector#5"]
+    tags: [factual, pgvector, ivfflat]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-vector-max-dims
+    question: "Up to how many dimensions does pgvector's `vector` type support for indexing?"
+    expectedAnswer: "Up to 2,000 dimensions."
+    goldChunkRefs: ["pgvector#3"]
+    tags: [factual, pgvector, vector-type]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-enable-extension
+    question: "What SQL command enables the pgvector extension in a database?"
+    expectedAnswer: "CREATE EXTENSION vector;"
+    goldChunkRefs: ["pgvector#1"]
+    tags: [factual, pgvector, setup]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-default-search-exactness
+    question: "By default, does pgvector perform exact or approximate nearest neighbor search?"
+    expectedAnswer: "Exact nearest neighbor search, which provides perfect recall."
+    goldChunkRefs: ["pgvector#2"]
+    tags: [factual, pgvector, indexing]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-approximate-index-types
+    question: "What are the two approximate index types pgvector supports?"
+    expectedAnswer: "HNSW and IVFFlat."
+    goldChunkRefs: ["pgvector#2"]
+    tags: [factual, pgvector, indexing]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-vector-storage-formula
+    question: "What is the storage size formula for a pgvector `vector` value?"
+    expectedAnswer: "4 * dimensions + 8 bytes."
+    goldChunkRefs: ["pgvector#16"]
+    tags: [factual, pgvector, storage]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: pgvector-hybrid-search-fusion
+    question: "What two techniques does pgvector's documentation suggest for combining hybrid search results?"
+    expectedAnswer: "Reciprocal Rank Fusion or a cross-encoder."
+    goldChunkRefs: ["pgvector#9"]
+    tags: [factual, pgvector, hybrid-search]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: kafka-ui-message-encodings
+    question: "What message encodings can you browse with in UI for Apache Kafka?"
+    expectedAnswer: "JSON, plain text, and Avro encoding."
+    goldChunkRefs: ["kafka-ui#2"]
+    tags: [factual, kafka-ui, messages]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: kafka-ui-quickstart-port
+    question: "What port does the kafka-ui quick-start Docker command expose?"
+    expectedAnswer: "Port 8080."
+    goldChunkRefs: ["kafka-ui#0"]
+    tags: [factual, kafka-ui, docker]
+    category: FACTUAL_SINGLE_HOP
+
+  - key: kafka-ui-health-endpoint
+    question: "Where is the liveliness and readiness endpoint for UI for Apache Kafka?"
+    expectedAnswer: "At /actuator/health."
+    goldChunkRefs: ["kafka-ui#4"]
+    tags: [factual, kafka-ui, operations]
+    category: FACTUAL_SINGLE_HOP
+
+  # ---- multi_hop (~20%) ----
+  - key: pgvector-search-defaults-comparison
+    question: "Which starts with a larger default candidate pool: HNSW search (hnsw.ef_search) or IVFFlat search (ivfflat.probes)?"
+    expectedAnswer: "HNSW — hnsw.ef_search defaults to 40, while ivfflat.probes defaults to 1."
+    goldChunkRefs: ["pgvector#3", "pgvector#5"]
+    tags: [multi-hop, pgvector, hnsw, ivfflat]
+    category: MULTI_HOP
+
+  - key: pgvector-l2-operator-and-function
+    question: "What is both the operator symbol and the function name pgvector provides for L2 (Euclidean) distance between two vectors?"
+    expectedAnswer: "The `<->` operator, and the `l2_distance(vector, vector)` function."
+    goldChunkRefs: ["pgvector#2", "pgvector#17"]
+    tags: [multi-hop, pgvector, operators, functions]
+    category: MULTI_HOP
+
+  - key: pgvector-binary-quantization-purpose
+    question: "pgvector recommends binary quantization for faster HNSW build times — what does binary quantization actually do to the vectors being indexed?"
+    expectedAnswer: "It reduces vectors to a compact bit representation (via binary_quantize) so the HNSW index can be built and searched using cheap Hamming distance, at the cost of needing a re-ranking step over the original vectors for full recall."
+    goldChunkRefs: ["pgvector#4", "pgvector#8"]
+    tags: [multi-hop, pgvector, quantization]
+    category: MULTI_HOP
+
+  - key: cross-doc-docker-quickstart
+    question: "What Docker command would you run to quickly try each of pgvector and UI for Apache Kafka?"
+    expectedAnswer: "For pgvector: `docker pull pgvector/pgvector:pg18-trixie` (a Postgres image with the extension preinstalled). For UI for Apache Kafka: `docker run -it -p 8080:8080 -e DYNAMIC_CONFIG_ENABLED=true provectuslabs/kafka-ui`."
+    goldChunkRefs: ["pgvector#20", "kafka-ui#0"]
+    tags: [multi-hop, pgvector, kafka-ui, docker]
+    category: MULTI_HOP
+
+  - key: pgvector-iterative-scan-and-limits
+    question: "How do you enable iterative index scans in pgvector, and what parameter caps how much extra work an HNSW iterative scan will do?"
+    expectedAnswer: "Set hnsw.iterative_scan (or ivfflat.iterative_scan) to strict_order or relaxed_order; for HNSW the cap is hnsw.max_scan_tuples (20,000 by default)."
+    goldChunkRefs: ["pgvector#7", "pgvector#8"]
+    tags: [multi-hop, pgvector, iterative-scans]
+    category: MULTI_HOP
+
+  # ---- exact_term (~15%) ----
+  - key: pgvector-hamming-distance-function
+    question: "What is the exact function signature pgvector provides for computing Hamming distance between two bit vectors?"
+    expectedAnswer: "hamming_distance(bit, bit) → double precision."
+    goldChunkRefs: ["pgvector#18"]
+    tags: [exact-term, pgvector, functions]
+    category: EXACT_TERM
+
+  - key: pgvector-jaccard-operator
+    question: "What is the exact SQL operator symbol for Jaccard distance in pgvector?"
+    expectedAnswer: "<%>"
+    goldChunkRefs: ["pgvector#2"]
+    tags: [exact-term, pgvector, operators]
+    category: EXACT_TERM
+
+  - key: pgvector-ivfflat-max-probes-param
+    question: "What is the exact configuration parameter name for capping the number of probes during an IVFFlat iterative scan?"
+    expectedAnswer: "ivfflat.max_probes"
+    goldChunkRefs: ["pgvector#8"]
+    tags: [exact-term, pgvector, ivfflat]
+    category: EXACT_TERM
+
+  - key: pgvector-binary-quantize-signature
+    question: "What is the exact function signature for binary quantization of a vector in pgvector?"
+    expectedAnswer: "binary_quantize(vector) → bit."
+    goldChunkRefs: ["pgvector#17"]
+    tags: [exact-term, pgvector, functions]
+    category: EXACT_TERM
+
+  # ---- unanswerable (~15%) ----
+  - key: kafka-ui-max-message-size
+    question: "What is the maximum message size UI for Apache Kafka's message browser supports?"
+    expectedAnswer: "The documentation does not state a maximum message size for the message browser."
+    goldChunkRefs: []
+    tags: [unanswerable, kafka-ui]
+    category: UNANSWERABLE
+
+  - key: pgvector-ram-per-million-vectors
+    question: "How much RAM does a pgvector HNSW index require per million 1024-dimension vectors?"
+    expectedAnswer: "The documentation gives no formula or figure for RAM usage per vector count."
+    goldChunkRefs: []
+    tags: [unanswerable, pgvector]
+    category: UNANSWERABLE
+
+  - key: kafka-ui-grafana-export
+    question: "Does UI for Apache Kafka support exporting its metrics dashboard directly to Grafana?"
+    expectedAnswer: "The documentation does not mention any Grafana export feature."
+    goldChunkRefs: []
+    tags: [unanswerable, kafka-ui]
+    category: UNANSWERABLE
+
+  - key: pgvector-implementation-language
+    question: "What programming language is the pgvector extension's core implemented in?"
+    expectedAnswer: "The documentation does not explicitly state the implementation language."
+    goldChunkRefs: []
+    tags: [unanswerable, pgvector]
+    category: UNANSWERABLE
+
+  # ---- ambiguous (~10%) ----
+  - key: pgvector-which-index-ambiguous
+    question: "Which index should I use?"
+    expectedAnswer: "Ambiguous without more context — pgvector documents a tradeoff between HNSW (better query performance, slower/heavier builds) and IVFFlat (faster/lighter builds, lower query performance); the right choice depends on the workload."
+    goldChunkRefs: ["pgvector#2"]
+    tags: [ambiguous, pgvector, indexing]
+    category: AMBIGUOUS
+
+  - key: pgvector-speed-things-up-ambiguous
+    question: "How do I speed things up?"
+    expectedAnswer: "Ambiguous — pgvector's Performance section covers tuning, storing, loading, indexing, querying and vacuuming separately, each with different techniques, so 'speed up' needs to specify which stage."
+    goldChunkRefs: ["pgvector#9"]
+    tags: [ambiguous, pgvector, performance]
+    category: AMBIGUOUS
+
+  - key: pgvector-filtering-ambiguous
+    question: "How do I filter my search results?"
+    expectedAnswer: "Ambiguous — could mean pre-filtering with a WHERE clause (exact or partial indexes on the filter column), which pgvector's Filtering section covers, or something else depending on what 'filter' means in context."
+    goldChunkRefs: ["pgvector#6"]
+    tags: [ambiguous, pgvector, filtering]
+    category: AMBIGUOUS

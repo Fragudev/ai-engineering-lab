@@ -1,0 +1,90 @@
+name: Nightly evaluation
+
+on:
+  schedule:
+    # 05:00 UTC daily — outside typical working hours for this project's contributors.
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # postgres/kafka only — kafka-ui and observability aren't needed to seed and evaluate.
+      # docker-compose.ci-eval.yml publishes postgres's port (unpublished in the base file to avoid
+      # colliding with a dev machine's own Postgres) since the app below runs as a plain `java -jar`
+      # on this runner, not as a Compose service.
+      - name: Start Postgres and Kafka
+        run: |
+          docker compose -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.ci-eval.yml \
+            up -d postgres kafka
+
+      - name: Wait for Postgres and Kafka to be healthy
+        run: |
+          for svc in postgres kafka; do
+            echo "Waiting for ${svc} ..."
+            cid="$(docker compose -f infrastructure/docker-compose.yml ps -q "${svc}")"
+            timeout 120 bash -c "until [ \"\$(docker inspect -f '{{.State.Health.Status}}' '${cid}')\" = healthy ]; do sleep 2; done"
+          done
+
+      - name: Build app jar
+        run: ./mvnw -B -q -pl app -am package -DskipTests
+
+      # Real content, real chunk boundaries — no mocking, same discipline as everywhere else in this
+      # project. The `recorded` provider gives deterministic embeddings/chat below, so the seeded
+      # chunk set (and every downstream metric) is reproducible run to run.
+      - name: Fetch demo corpus
+        run: ./scripts/fetch-corpus.sh
+
+      - name: Start app for seeding
+        run: |
+          nohup java -jar app/target/ai-engineering-lab.jar --spring.profiles.active=recorded \
+            > app-seed.log 2>&1 &
+          echo $! > app.pid
+          timeout 90 bash -c 'until curl -fsS http://localhost:8080/actuator/health >/dev/null 2>&1; do sleep 2; done'
+
+      - name: Seed corpus into the running app
+        run: ./scripts/seed.sh
+
+      - name: Stop app
+        if: always()
+        run: |
+          if [ -f app.pid ]; then
+            kill "$(cat app.pid)" 2>/dev/null || true
+            wait "$(cat app.pid)" 2>/dev/null || true
+          fi
+
+      # Every profile from docs/roadmap.md's RagProfiles, all under `recorded` — deterministic,
+      # offline, free (docs/ai-evaluation.md §6). This proves retrieval/pipeline mechanics, not real
+      # model quality: see the report's own "Methodology limitations" section.
+      - name: Run evaluation harness
+        run: |
+          SPRING_PROFILES_ACTIVE=recorded,eval-cli ./scripts/eval.sh \
+            --profiles=dense-only,hybrid,hybrid-rerank,hybrid-rerank-llm --repetitions=3
+
+      - name: Check for regressions against baseline
+        run: |
+          report="$(ls -t eval/reports/*.json | head -1)"
+          echo "Comparing ${report} against eval/baseline.json"
+          ./scripts/check-eval-regression.sh eval/baseline.json "${report}"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report-${{ github.run_id }}
+          path: |
+            eval/reports/*.md
+            eval/reports/*.json
+          retention-days: 90

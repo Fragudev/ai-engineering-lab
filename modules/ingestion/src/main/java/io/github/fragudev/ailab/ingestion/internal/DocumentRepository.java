@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
     Optional<Document> findByContentHash(String contentHash);
+
+    Optional<Document> findByTitle(String title);
 }

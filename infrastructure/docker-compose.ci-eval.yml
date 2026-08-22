@@ -1,0 +1,9 @@
+# Override applied only by .github/workflows/nightly-eval.yml, on top of docker-compose.yml.
+# postgres deliberately has no published port in the base file (avoids colliding with other local
+# Postgres instances on a dev machine) — but the nightly job runs the app as a plain `java -jar` on
+# the runner host, not as a Compose service, so it needs to reach Postgres at localhost:5432. A
+# fresh GitHub-hosted runner has no other Postgres to collide with, so publishing here is safe.
+services:
+  postgres:
+    ports:
+      - "5432:5432"

@@ -89,7 +89,7 @@ Modulith and ArchUnit fail the build on a violation.
 | `tools` | Registry, schemas, authorization, sandboxed execution | `shared` |
 | `workflow` | State machine, run persistence, compensation | `shared`, `ai-provider`, `rag`, `tools` |
 | `mcp` | MCP server exposing tools; MCP client for external servers | `shared`, `tools` |
-| `evaluation` | Datasets, run execution, metrics, reports | `shared`, `rag`, `conversation` |
+| `evaluation` | Datasets, run execution, metrics, reports | `shared`, `rag`, `conversation`, `knowledge`, `ingestion` |
 | `platform` | OpenTelemetry, security, rate limiting, idempotency, Problem Details | `shared` |
 
 **Invariants:**
@@ -100,7 +100,12 @@ Modulith and ArchUnit fail the build on a violation.
 - `platform` is depended upon, never depends on a domain module.
 
 Dependency direction is acyclic by construction. `evaluation` depending on `rag` and `conversation`
-is intentional: evaluation is a consumer of the system, not a peer of it.
+is intentional: evaluation is a consumer of the system, not a peer of it. `knowledge` and `ingestion`
+were added to this list during Phase 4 implementation, not originally planned here: resolving a
+golden-dataset case's `gold_chunk_refs` (`"title#ordinal"`, stable across a fresh corpus fetch,
+unlike a chunk's random `UUID` primary key) against real ingested content is evaluation's own
+concern, requiring it to query `ingestion.Document` (by title) and `knowledge.Chunk` (by ordinal)
+directly — the same kind of documented boundary correction Phase 3 made for `knowledge`/`rag`.
 
 ---
 
@@ -134,7 +139,8 @@ second copy.
 
 **Evaluation**
 
-- `EvalDataset` / `EvalCase` — question, expected answer, gold chunk ids, tags
+- `EvalDataset` / `EvalCase` — question, expected answer, gold chunk refs (`"title#ordinal"`,
+  resolved to real chunk ids at run time — see §3), tags, category
 - `EvalRun` / `EvalResult` — case, RAG profile used, model, metrics, produced answer
 
 ---
@@ -165,10 +171,16 @@ POST   /api/v1/tools/{name}:invoke
 
 POST   /api/v1/workflows/{type}/runs            # 202 + Location: run
 GET    /api/v1/workflows/runs/{id}
-
-POST   /api/v1/evaluations/runs                 # 202
-GET    /api/v1/evaluations/runs/{id}
 ```
+
+Evaluation runs are **not** exposed over this API. A REST pair (`POST /api/v1/evaluations/runs`,
+`GET .../{id}`) was the original plan here, but Phase 4 implementation chose a CLI instead: an eval
+run is a long-running batch job with no caller waiting synchronously on the other end (a developer or
+CI, not an end user), and the roadmap's own acceptance criteria only ever require `./scripts/eval.sh`
+to work — a REST endpoint would have added surface area no requirement asked for. `EvalCliRunner`
+(`app`, `@Profile("eval-cli")`) drives `evaluation.EvalRunner` reusing the full real Spring context
+(real Postgres, real `RagPipeline`) and exits via `SpringApplication.exit(...)`; `scripts/eval.sh`
+wraps it.
 
 `POST /api/v1/retrieval:search` deserves emphasis. It returns the rewritten query, the candidate set
 from each retriever, scores before and after fusion and reranking, and the chunks that survived into
@@ -487,7 +499,7 @@ sequenceDiagram
 | API contract | OpenAPI validator, MockMvc | Implementation conforms to the published spec |
 | Provider | WireMock + fixtures | Streaming, timeouts, 429s, malformed JSON, invalid tool calls |
 | Failure path | Testcontainers + Toxiproxy | Database down, Kafka down, slow model, retry exhaustion → DLT |
-| AI evaluation | Custom runner, `@Tag("ai-eval")` | Retrieval and answer quality |
+| AI evaluation | `evaluation` module + `scripts/eval.sh` (custom runner, not a tagged test suite) | Retrieval and answer quality |
 | Static | Spotless, Error Prone, NullAway | Formatting, correctness, nullability |
 | Security | OWASP Dependency-Check, Trivy, CodeQL, gitleaks | Dependencies, images, code, secrets |
 

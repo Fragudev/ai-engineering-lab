@@ -249,18 +249,91 @@ tuning them against a real golden dataset is Phase 4's job, not invented here.
 
 ## Phase 4 — Evaluation
 
-A golden dataset of roughly fifty cases over the demo corpus, an evaluation runner, deterministic
-metrics, a secondary LLM judge, a profile comparison report, and a nightly CI job on the `recorded`
-provider.
+A golden dataset over the demo corpus, an evaluation runner, deterministic metrics, a secondary LLM
+judge, a profile comparison report, and a nightly CI job on the `recorded` provider.
 
 **Acceptance**
 
-- `./scripts/eval.sh` produces a report comparing at least two RAG profiles on recall@k, MRR,
-  citation precision, p50/p95 latency and token cost.
-- Reports are committed with date, chat model and hardware recorded.
-- The report states the limitations of its own methodology, including the weakness of local-model
-  judging.
-- Nightly CI runs the harness against recorded fixtures and fails on regression beyond a threshold.
+- [x] `./scripts/eval.sh` produces a report comparing at least two RAG profiles on recall@k, MRR,
+      citation precision, p50/p95 latency and token cost. Verified live: `fetch-corpus.sh` +
+      `seed.sh` against a real running app/Postgres/Kafka stack, then
+      `eval.sh --profiles=dense-only,hybrid,hybrid-rerank,hybrid-rerank-llm --repetitions=3` against
+      the real seeded corpus, producing
+      [`eval/reports/2026-08-22-dense-only-hybrid-hybrid-rerank-hybrid-rerank-llm.md`](../eval/reports/2026-08-22-dense-only-hybrid-hybrid-rerank-hybrid-rerank-llm.md)
+      with a real per-profile table (recall@k, MRR, citation precision/recall, abstention accuracy,
+      p50/p95, token counts) computed from real `RagPipeline.search`/`.answer()` calls, not stubs.
+- [x] Reports are committed with date, chat model and hardware recorded. The committed report and
+      its JSON sidecar carry both, per-run.
+- [x] The report states the limitations of its own methodology, including the weakness of
+      local-model judging. `ReportWriter.limitations()` always renders a "Methodology limitations"
+      section (judge weakness, recorded-profile mechanism-only caveat, small/narrow corpus, no human
+      eval, mean±spread explanation), present in the committed report.
+- [x] Nightly CI runs the harness against recorded fixtures and fails on regression beyond a
+      threshold. `.github/workflows/nightly-eval.yml` + `scripts/check-eval-regression.sh`, verified
+      two ways: locally against hand-built JSON fixtures (no baseline → pass; small delta → pass;
+      large recall drop → fail, exit 1); and locally against the real committed report compared to
+      itself as [`eval/baseline.json`](../eval/baseline.json) (all profiles: 0.0000 delta, "no
+      regressions detected"). **Not yet verified:** an actual GitHub-hosted run of
+      `nightly-eval.yml` itself — `gh workflow run` returned a 404 because GitHub's
+      `workflow_dispatch` API only recognizes a workflow once its file exists on the repository's
+      default branch, which `phase-4/evaluation` isn't yet. This is a real GitHub platform
+      constraint, not a shortcut skipped here: once this PR merges to `main`, either its own
+      `05:00 UTC` schedule or a manual `gh workflow run nightly-eval.yml` will produce the first
+      real GitHub Actions run, and that should be watched once it happens.
+
+The golden dataset (`eval/dataset/core.yaml`, 28 cases: 12 factual-single-hop, 5 multi-hop, 4
+exact-term, 4 unanswerable, 3 ambiguous) is real, individually-verified content, not "roughly fifty"
+as originally scoped — a smaller, honestly-stated set, the same kind of scope reduction Phase 2/3
+named rather than silently shipped fewer than documented. Every case's `gold_chunk_refs` was checked
+against the real fetched corpus content (`corpus/documents/*.md`, downloaded for real via
+`scripts/fetch-corpus.sh` — see `corpus/MANIFEST.yml`'s real sha256/`retrieved_at`) and the exact
+chunk boundaries `Chunker` deterministically produces for it, first reproduced with a faithful
+standalone simulation of `Chunker`'s algorithm, then confirmed for real: after a live `seed.sh` run,
+a direct query against the seeded `chunk` table showed exactly 24 chunks (ordinals 0–23) for
+`pgvector` and 5 chunks (ordinals 0–4) for `kafka-ui` — matching the simulation exactly — and all 29
+`gold_chunk_refs` across the 28 cases fall inside those real ranges, confirming
+`GoldChunkResolver` never silently drops a case's gold chunk.
+
+Two real bugs surfaced by actually compiling, not by code review: `EvalCliRunner`'s original
+`System.exit(SpringApplication.exit(context, () -> exitCode))` captured a non-final local `exitCode`
+mutated inside its own enclosing `try`/`catch` — doesn't compile; fixed by moving the whole run into
+a helper method that returns the exit code instead of mutating a captured variable. And
+`ReportWriter`'s first JSON-sidecar draft would have serialized an undefined (`Double.NaN`) metric
+mean as the non-standard bare `NaN` token — invalid JSON, and exactly the kind of thing that would
+silently break `scripts/check-eval-regression.sh`'s `jq` parsing months later; fixed to write `null`
+instead, same discipline as `CaseMetrics.toMap()`'s existing NaN handling, and pinned by
+`ReportWriterTest`. A third bug surfaced only by a real live run, not by any test: `ReportWriter.fmt()`
+formatted numbers with `String.formatted()` under the platform default locale — on this machine that
+rendered `0,25 ± 0,00` (comma decimal separators) in the Markdown table instead of `0.25 ± 0.00`,
+which would have made a report committed from one machine render differently from one generated on
+CI. Fixed with an explicit `Locale.ROOT`; the JSON sidecar (Jackson) was never affected, so
+`check-eval-regression.sh`'s `jq`-based parsing was never at risk — but the human-facing report was
+wrong until this was actually looked at.
+
+**What the live report actually shows, honestly:** recall@k ranges 0.21–0.38 across profiles, with
+`hybrid` and `hybrid-rerank-llm` tied highest and `hybrid-rerank` (MMR) lowest — under the `recorded`
+provider's hash-seeded, semantically-meaningless embeddings, this measures whether hybrid retrieval
+and reranking mechanically change which chunks surface, not real retrieval quality; a real quality
+signal needs a live LM Studio run. Citation precision is `n/a` for every profile (never `0.00`) —
+correct behavior: `recorded`'s embeddings essentially never produce a citation-worthy match, so
+precision is genuinely undefined rather than zero, exactly as `CitationMetrics.precision`'s own
+NaN-vs-zero distinction intends. Abstention accuracy is a real `1.00` across all four
+profiles — the four `UNANSWERABLE`-tagged cases correctly triggered the abstention gate every time,
+which is expected but not guaranteed under `recorded`'s effectively-random distances.
+
+**Rancher Desktop / Testcontainers, for the next session:** this session's Docker daemon was hung for
+its entire first half (VM process alive, socket returning `EOF`) and needed a hard restart (kill the
+stale `lima`/`qemu` processes, relaunch the app) to recover — a `docker version` retry loop alone
+never resolved it. Once Docker was back, `./mvnw verify` still failed twice more, for two more
+Rancher-Desktop-specific reasons, neither a real code defect: (1) Testcontainers' Docker-environment
+auto-detection didn't pick up Rancher Desktop's non-standard socket
+(`~/.rd/docker.sock`) even though the `docker` CLI itself worked fine via its context —
+fixed by exporting `DOCKER_HOST` and `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` to that socket path; (2)
+the `testcontainers/ryuk` cleanup sidecar container failed its own startup wait strategy on this VM
+— fixed with the standard `TESTCONTAINERS_RYUK_DISABLED=true` escape hatch (Testcontainers still
+cleans up via JVM shutdown hooks without it; confirmed no leftover containers after the run). Both are
+environment variables, not code changes, and both are widely-documented Rancher Desktop workarounds
+— recorded here since they cost real time and will recur on this machine.
 
 > **This is the line.** At the end of Phase 4 the project supports a full architecture conversation:
 > RAG, vector search, hybrid retrieval, event-driven processing, idempotency, retries, dead-lettering,

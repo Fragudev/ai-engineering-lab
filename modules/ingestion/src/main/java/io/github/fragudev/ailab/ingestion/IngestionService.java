@@ -11,6 +11,7 @@ import io.micrometer.tracing.Tracer;
 import java.util.Base64;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -86,6 +87,14 @@ public class IngestionService {
 
     public List<Document> listDocuments() {
         return documentRepository.findAll();
+    }
+
+    /** Used to resolve a golden-dataset case's "title#ordinal" gold chunk reference against real
+     * ingested content — see {@code evaluation.internal.GoldChunkResolver}. {@code scripts/seed.sh}
+     * sets a document's title to its {@code corpus/MANIFEST.yml} id, which is what makes this a
+     * stable lookup key. */
+    public Optional<Document> findByTitle(String title) {
+        return documentRepository.findByTitle(title);
     }
 
     @Transactional
