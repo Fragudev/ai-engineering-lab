@@ -1,0 +1,117 @@
+app/src/test/java/io/github/fragudev/ailab/WorkflowCompensationIntegrationTest.java
+  s_f6c2719e97e037::t_84a47f5280d7e7 1-95
+app/src/test/java/io/github/fragudev/ailab/WorkflowRunIntegrationTest.java
+  s_f6c2719e97e037::t_c0a640a6ace154 1-171
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/AnswerSynthesiser.java
+  s_f6c2719e97e037::t_e22bec282092a3 1-54
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/DocumentationResearchEngine.java
+  s_f6c2719e97e037::t_dd128a7bedc41c 1-294
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/StageRunner.java
+  s_f6c2719e97e037::t_77078609e02270 1-76
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/SubQueryPlanner.java
+  s_f6c2719e97e037::t_d15a72aa037e4d 1-55
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/AnswerSynthesiserTest.java
+  s_f6c2719e97e037::t_0b08e6aaf2eefa 1-34
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/CitationCheckerTest.java
+  s_f6c2719e97e037::t_2ae491509e99c7 1-31
+README.md
+  s_f6c2719e97e037::t_eba9c900f0223e 40-42
+app/src/main/java/io/github/fragudev/ailab/WorkflowRunRequest.java
+  s_f6c2719e97e037::t_04e514f47944da 1-3
+app/src/main/java/io/github/fragudev/ailab/WorkflowRunResponse.java
+  s_f6c2719e97e037::t_0fc6baf6998c7c 1-32
+app/src/main/java/io/github/fragudev/ailab/WorkflowStepResponse.java
+  s_f6c2719e97e037::t_1a5ae5bcf1c868 1-33
+app/src/main/java/io/github/fragudev/ailab/WorkflowsController.java
+  s_f6c2719e97e037::t_17346a735994b9 1-50
+app/src/main/resources/application.yml
+  s_f6c2719e97e037::t_84fa41175688ca 53-63
+app/src/main/resources/db/migration/V8__create_workflow_tables.sql
+  s_f6c2719e97e037::t_98975ab693b9ae 1-34
+app/src/main/resources/openapi/openapi.yaml
+  s_f6c2719e97e037::t_4224ae498c2b14 346-405,720-795
+docs/adr/0010-agent-orchestration.md
+  s_f6c2719e97e037::t_47e73d9548e57b 1-217
+docs/adr/README.md
+  s_f6c2719e97e037::t_926ef4646d65d2 23
+docs/architecture.md
+  s_f6c2719e97e037::t_55461bffb18983 90,113-116,146-153,196-200
+docs/threat-model.md
+  s_f6c2719e97e037::t_8e9204b05b43bf 130-138
+modules/ai-provider/src/main/resources/fixtures/chat/fixtures.json
+  s_f6c2719e97e037::t_5ca499e825ff87 53-76
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/WorkflowRunId.java
+  s_f6c2719e97e037::t_c52026e66ef6b0 1-20
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/WorkflowStepId.java
+  s_f6c2719e97e037::t_4e7b4673da4dbd 1-20
+modules/workflow/pom.xml
+  s_f6c2719e97e037::t_da77bfa4179ecb 33-42,47-50
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/WorkflowRunSnapshot.java
+  s_f6c2719e97e037::t_c9736d0b18d6fb 1-23
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/WorkflowRunStatus.java
+  s_f6c2719e97e037::t_3f8288d195be5a 1-14
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/WorkflowService.java
+  s_f6c2719e97e037::t_21adf6c404f924 1-86
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/WorkflowStepSnapshot.java
+  s_f6c2719e97e037::t_e26df7d7a07de3 1-27
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/WorkflowStepStatus.java
+  s_f6c2719e97e037::t_0836da1a9ab677 1-9
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/WorkflowType.java
+  s_f6c2719e97e037::t_4333fb53f2e39a 1-29
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/CitationChecker.java
+  s_f6c2719e97e037::t_922e1b0d6be8fd 1-34
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/ExtractedSource.java
+  s_f6c2719e97e037::t_7c3c52712d2db8 1-7
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/LlmCallBudget.java
+  s_f6c2719e97e037::t_da11fe956dafad 1-26
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/SourceExtractor.java
+  s_f6c2719e97e037::t_86a0ffdf6cb3f2 1-52
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/StageFailedException.java
+  s_f6c2719e97e037::t_b32cad5fc58312 1-18
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/StageFunction.java
+  s_f6c2719e97e037::t_a71c6eca358f76 1-7
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/StageOutcome.java
+  s_f6c2719e97e037::t_4fa8c296bb4f0b 1-16
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowJsonConverter.java
+  s_f6c2719e97e037::t_2d7d139782e296 1-46
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowMetrics.java
+  s_f6c2719e97e037::t_1283ea333f6a93 1-30
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowResumer.java
+  s_f6c2719e97e037::t_187a502b15682e 1-54
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowRun.java
+  s_f6c2719e97e037::t_9760e83108c16d 1-121
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowRunRepository.java
+  s_f6c2719e97e037::t_c8d0ab6d40511c 1-14
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowStep.java
+  s_f6c2719e97e037::t_87df1d714d35dd 1-146
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowStepRepository.java
+  s_f6c2719e97e037::t_3fe297c333fc03 1-15
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowsConfiguration.java
+  s_f6c2719e97e037::t_b6724d752f2d5c 1-20
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowsProperties.java
+  s_f6c2719e97e037::t_82b1cea540e321 1-24
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/FakeChatProvider.java
+  s_f6c2719e97e037::t_d3f4c38b2609f0 1-57
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/SourceExtractorTest.java
+  s_f6c2719e97e037::t_201e8f6723f24a 1-46
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/SubQueryPlannerTest.java
+  s_f6c2719e97e037::t_7d3e7caa3f7011 1-46
+docs/roadmap.md
+  s_f6c2719e97e037::t_cac5983c08875d 18,421-426,430-469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "839fac944709e807d5c727f991ae6f7dc014ce2d",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
