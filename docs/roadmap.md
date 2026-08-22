@@ -270,10 +270,16 @@ judge, a profile comparison report, and a nightly CI job on the `recorded` provi
       eval, mean±spread explanation), present in the committed report.
 - [x] Nightly CI runs the harness against recorded fixtures and fails on regression beyond a
       threshold. `.github/workflows/nightly-eval.yml` + `scripts/check-eval-regression.sh`, verified
-      three ways: locally against hand-built JSON fixtures (no baseline → pass; small delta → pass;
-      large recall drop → fail, exit 1); locally against the real committed report compared to
+      two ways: locally against hand-built JSON fixtures (no baseline → pass; small delta → pass;
+      large recall drop → fail, exit 1); and locally against the real committed report compared to
       itself as [`eval/baseline.json`](../eval/baseline.json) (all profiles: 0.0000 delta, "no
-      regressions detected"); and via `gh workflow run` on GitHub Actions (see below).
+      regressions detected"). **Not yet verified:** an actual GitHub-hosted run of
+      `nightly-eval.yml` itself — `gh workflow run` returned a 404 because GitHub's
+      `workflow_dispatch` API only recognizes a workflow once its file exists on the repository's
+      default branch, which `phase-4/evaluation` isn't yet. This is a real GitHub platform
+      constraint, not a shortcut skipped here: once this PR merges to `main`, either its own
+      `05:00 UTC` schedule or a manual `gh workflow run nightly-eval.yml` will produce the first
+      real GitHub Actions run, and that should be watched once it happens.
 
 The golden dataset (`eval/dataset/core.yaml`, 28 cases: 12 factual-single-hop, 5 multi-hop, 4
 exact-term, 4 unanswerable, 3 ambiguous) is real, individually-verified content, not "roughly fifty"
