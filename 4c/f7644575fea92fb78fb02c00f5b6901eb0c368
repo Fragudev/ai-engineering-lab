@@ -1,0 +1,71 @@
+modules/mcp/src/main/java/io/github/fragudev/ailab/mcp/internal/McpClientTool.java
+  s_f6c2719e97e037::t_68117d53291be1 1-86
+modules/mcp/src/main/java/io/github/fragudev/ailab/mcp/internal/McpClientToolRegistrar.java
+  s_f6c2719e97e037::t_38e7a43ea733c0 1-73
+modules/mcp/src/main/java/io/github/fragudev/ailab/mcp/internal/McpServerToolConfiguration.java
+  s_f6c2719e97e037::t_52c8c79119f660 1-84
+modules/mcp/src/test/java/io/github/fragudev/ailab/mcp/internal/McpClientToolTest.java
+  s_f6c2719e97e037::t_fd151130cf0527 1-91
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/ToolCallingChatService.java
+  s_f6c2719e97e037::t_ccd5133048b8bd 42-48,110-111
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/ToolCallingChatServiceTest.java
+  s_f6c2719e97e037::t_8c8b37136edf86 95,129,238-246
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/ToolRegistryTest.java
+  s_f6c2719e97e037::t_d89ba3f84957de 1-71
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/internal/ScopeAuthorizerTest.java
+  s_f6c2719e97e037::t_50209e00162d33 14-15
+AGENTS.md
+  s_f6c2719e97e037::t_60860671ab8848 20
+README.md
+  s_f6c2719e97e037::t_9143800da0c95b 43
+app/src/main/java/io/github/fragudev/ailab/KnowledgeBaseSearchTool.java
+  s_f6c2719e97e037::t_e845e02d3c2899 47
+app/src/main/resources/application.yml
+  s_f6c2719e97e037::t_50774a5e8c248d 30-56,73,91-98
+app/src/test/java/io/github/fragudev/ailab/McpServerAndClientIntegrationTest.java
+  s_f6c2719e97e037::t_fb2aa9e574fd9b 1-186
+app/src/test/java/io/github/fragudev/ailab/ToolInvokeIntegrationTest.java
+  s_f6c2719e97e037::t_83e53ed724e134 70
+docs/adr/0011-mcp-tool-exposure-boundaries.md
+  s_f6c2719e97e037::t_7143630f60b004 1-177
+docs/adr/README.md
+  s_f6c2719e97e037::t_df4e673d87db58 24
+docs/architecture.md
+  s_f6c2719e97e037::t_5d7df2416d4f11 141-143,203-208,607,615-619
+docs/threat-model.md
+  s_f6c2719e97e037::t_68ea35555ebb76 167-190
+modules/ai-provider/src/main/resources/fixtures/chat/fixtures.json
+  s_f6c2719e97e037::t_20d825b5f0c61b 77-87
+modules/mcp/pom.xml
+  s_f6c2719e97e037::t_7aad743fee4df0 29-40
+modules/mcp/src/main/java/io/github/fragudev/ailab/mcp/internal/McpConfiguration.java
+  s_f6c2719e97e037::t_b7d4e26f4b96f3 1-8
+modules/mcp/src/main/java/io/github/fragudev/ailab/mcp/internal/McpProperties.java
+  s_f6c2719e97e037::t_98eba1be7ba3dd 1-28
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/ToolDefinition.java
+  s_f6c2719e97e037::t_1891ea158ab509 17-21,31
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/ToolRegistry.java
+  s_f6c2719e97e037::t_0c03bb9994c711 6,14-17,25,28,32,42-48
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/internal/CalculatorTool.java
+  s_f6c2719e97e037::t_6764b5dc5929e0 37
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/internal/MockWeatherTool.java
+  s_f6c2719e97e037::t_68bc3a330d7164 41
+docs/roadmap.md
+  s_f6c2719e97e037::t_7ad65d452bcbe8 19,477-480,484-520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4cf7644575fea92fb78fb02c00f5b6901eb0c368",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
