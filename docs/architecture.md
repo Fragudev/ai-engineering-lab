@@ -138,7 +138,9 @@ second copy.
 **Tools**
 
 - `ToolDefinition` — name, version, input/output JSON Schema, required scopes, whether the tool
-  introduces retrieved (untrusted) content into the conversation (Phase 5, ADR-0009)
+  introduces retrieved (untrusted) content into the conversation (Phase 5, ADR-0009), whether it
+  always requires confirmation regardless of turn history — `true` only for tools sourced from an
+  external MCP server (Phase 7, ADR-0011, docs/threat-model.md T9)
 - `ToolInvocation` — tool, arguments, result, duration, outcome (`ok` / `timeout` / `denied` / `error`)
 
 **Workflow**
@@ -197,6 +199,12 @@ designed down to an endpoint. See ADR-0009.
 run's own response — no separate steps endpoint exists or is planned; nothing in Phase 6's
 acceptance criteria needs one. A run resumes automatically on application startup if it was left
 `PENDING` or `RUNNING` by an interrupted process — see ADR-0010.
+
+The MCP server (Phase 7) is **not** a path in this list — it's JSON-RPC 2.0 over Streamable HTTP,
+mounted by Spring AI's own autoconfiguration at its own path (`/mcp` by default), not a Spring MVC
+`@RestController` resource. It re-exposes the exact same tool registry `GET /api/v1/tools` and
+`POST /api/v1/tools/{name}:invoke` already do, through MCP's own protocol instead of plain REST. See
+ADR-0011.
 
 Evaluation runs are **not** exposed over this API. A REST pair (`POST /api/v1/evaluations/runs`,
 `GET .../{id}`) was the original plan here, but Phase 4 implementation chose a CLI instead: an eval
@@ -596,7 +604,7 @@ silent failure, and not an exception that surfaces as a generic error. Built in 
 a real per-request principal — no Spring Security exists in this codebase yet, matching the
 single-user, no-multi-tenancy stance; see [ADR-0009](adr/0009-tool-design-and-security-boundaries.md).
 
-**Trust boundaries.** Three, and they are the ones that matter for an LLM system:
+**Trust boundaries.** Four, and they are the ones that matter for an LLM system:
 
 1. User input → the application. Standard validation.
 2. **Retrieved document content → the prompt.** Untrusted. Delimited, never in the instruction
@@ -604,6 +612,11 @@ single-user, no-multi-tenancy stance; see [ADR-0009](adr/0009-tool-design-and-se
    outright, but requires explicit user confirmation before it executes — the structural control
    for this boundary (docs/threat-model.md T2, ADR-0009), not a flat prohibition.
 3. **Model output → tool execution.** Untrusted. Schema-validated, scope-checked, timeout-bounded.
+4. **An external MCP server → this application (Phase 7).** Untrusted, in a different way from
+   boundary 2: the risk isn't only what a tool *returns*, it's that the tool's own *implementation*
+   is a remote process this application doesn't control. Every MCP-client-sourced tool requires
+   explicit user confirmation on *every* call, not just once a turn is otherwise untrusted — stricter
+   than boundary 2's rule, on purpose (docs/threat-model.md T9, ADR-0011).
 
 Treating the model's output as untrusted input to the tool layer is the single most important
 security posture in the system.

@@ -17,7 +17,7 @@ Do not revisit these without a superseding ADR.
 |---|---|
 | Java | 25 (LTS) |
 | Framework | Spring Boot 4.1.x, Spring Framework 7 |
-| AI integration | Spring AI 2.0.x, **only inside `ai-provider` adapters** |
+| AI integration | Spring AI 2.0.x, **model-calling (`ChatModel`/`EmbeddingModel`) only inside `ai-provider` adapters** — Spring AI's MCP Boot starters are a separate concern (protocol support, not model access) and are used directly in `mcp` (Phase 7, [ADR-0011](docs/adr/0011-mcp-tool-exposure-boundaries.md)) |
 | Build | Maven multi-module, wrapper committed |
 | Package root | `io.github.fragudev.ailab` |
 | Modularity | Spring Modulith + ArchUnit, boundaries enforced in the build |

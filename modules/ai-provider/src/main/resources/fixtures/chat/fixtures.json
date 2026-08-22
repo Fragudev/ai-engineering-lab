@@ -74,6 +74,17 @@
       "response": "What is the boiling point of water?\nWhat is dry ice made of?",
       "promptTokens": 22,
       "completionTokens": 15
+    },
+    {
+      "matchContains": "what is 6 times 7 via mcp",
+      "response": "{\"tool_call\":{\"name\":\"mcp:self:calculator\",\"arguments\":{\"expression\":\"6 * 7\"}}}",
+      "promptTokens": 40,
+      "completionTokens": 20,
+      "followUp": {
+        "response": "6 times 7 is 42.",
+        "promptTokens": 55,
+        "completionTokens": 8
+      }
     }
   ]
 }

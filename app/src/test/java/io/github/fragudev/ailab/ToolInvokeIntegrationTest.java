@@ -67,6 +67,7 @@ class ToolInvokeIntegrationTest {
                             "{}",
                             Set.of(),
                             false,
+                            false,
                             Duration.ofMillis(200));
                 }
 

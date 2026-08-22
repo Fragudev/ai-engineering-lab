@@ -44,6 +44,7 @@ class KnowledgeBaseSearchTool implements Tool {
             "properties":{"results":{"type":"array"}},"required":["results"]}""",
             Set.of("knowledge-base:search"),
             true,
+            false,
             Duration.ofSeconds(10));
 
     private final HybridSearchService hybridSearchService;

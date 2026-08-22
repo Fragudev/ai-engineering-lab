@@ -26,6 +26,18 @@
       <groupId>io.github.fragudev.ailab</groupId>
       <artifactId>tools</artifactId>
     </dependency>
+    <!-- Not "AI integration" in the ai-provider sense (no ChatModel/EmbeddingModel access) — MCP
+         protocol support, explicitly carved out of the "Spring AI only inside ai-provider" locked
+         decision for this reason. See AGENTS.md and docs/adr/0011-mcp-tool-exposure-boundaries.md.
+         No explicit <version> needed: resolved via the root pom.xml's spring-ai-bom import. -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-mcp-client</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>

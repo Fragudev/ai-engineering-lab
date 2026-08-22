@@ -40,7 +40,7 @@ behind a set of architecture conversations.
 | Evaluation | Golden dataset, recall@k, MRR, citation precision, latency, token cost, profile comparison | Done — Phase 4 |
 | Tool calling | Schema-validated registry with scoped authorization, timeouts and full tracing | Done — Phase 5 |
 | Agentic workflow | An explicit state machine with persisted state, resumable and compensable | Done — Phase 6 |
-| MCP | Tool registry exposed as an MCP server; external MCP servers consumed as clients | Planned — Phase 7 |
+| MCP | Tool registry exposed as an MCP server; external MCP servers consumed as clients | Done — Phase 7 |
 
 ---
 

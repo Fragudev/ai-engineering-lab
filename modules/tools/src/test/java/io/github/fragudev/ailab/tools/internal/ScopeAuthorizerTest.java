@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 class ScopeAuthorizerTest {
 
     private static ToolDefinition definitionRequiring(String... scopes) {
-        return new ToolDefinition("some-tool", "1", "desc", "{}", "{}", Set.of(scopes), false, Duration.ofSeconds(5));
+        return new ToolDefinition(
+                "some-tool", "1", "desc", "{}", "{}", Set.of(scopes), false, false, Duration.ofSeconds(5));
     }
 
     private static ScopeAuthorizer authorizerWithGrantedScopes(String... granted) {
