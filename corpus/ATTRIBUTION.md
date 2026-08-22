@@ -5,7 +5,9 @@ is **not committed to this repository** — `scripts/fetch-corpus.sh` downloads 
 [`MANIFEST.yml`](MANIFEST.yml), so provenance stays auditable and no third-party content is
 redistributed here.
 
-**Status:** planned. Populated in Phase 2, when ingestion exists.
+**Status:** populated in Phase 4. Fetched for real via `scripts/fetch-corpus.sh`; see
+[`MANIFEST.yml`](MANIFEST.yml) for the exact URLs, sha256 hashes and retrieval timestamp actually
+recorded.
 
 ## Selection criteria
 
@@ -19,15 +21,17 @@ redistributed here.
 
 | Source | License | Retrieved | Notes |
 |---|---|---|---|
-| Spring Boot reference documentation | Apache-2.0 | — | To be confirmed in Phase 2 |
-| Spring AI reference documentation | Apache-2.0 | — | To be confirmed in Phase 2 |
-| Apache Kafka documentation | Apache-2.0 | — | To be confirmed in Phase 2 |
+| [pgvector README](https://raw.githubusercontent.com/pgvector/pgvector/master/README.md) | PostgreSQL | 2026-08-22 | Directly relevant to ADR-0003 (this project's own vector store) |
+| [UI for Apache Kafka README](https://raw.githubusercontent.com/provectus/kafka-ui/master/README.md) | Apache-2.0 | 2026-08-22 | Swapped in for `apache/kafka`'s own README, which turned out to be pure Gradle build/test tooling documentation with no conceptual content to write golden questions against; kafka-ui is already deployed in this project's own `infrastructure/docker-compose.yml` |
 
 Licenses and terms are re-verified at fetch time, not assumed from this table. `MANIFEST.yml` records
-the exact URLs, license identifiers and retrieval dates actually used.
+the exact URLs, sha256 hashes and retrieval timestamp actually used — `scripts/fetch-corpus.sh`
+rewrites it in place on every run.
 
 ## Limitations
 
-This corpus is small and narrow. Retrieval quality measured on it does not generalise to a large or
-heterogeneous corpus, and [`docs/ai-evaluation.md`](../docs/ai-evaluation.md) states so among its
-methodological limits.
+This corpus is small (2 sources) and narrow. Retrieval quality measured on it does not generalise to
+a large or heterogeneous corpus, and [`docs/ai-evaluation.md`](../docs/ai-evaluation.md) states so
+among its methodological limits. `eval/dataset/core.yaml`'s 28 golden cases were hand-authored
+against this exact fetched content, with `gold_chunk_refs` (`title#ordinal`) verified against the
+real, deterministic chunk boundaries `Chunker` produces for it — not guessed.

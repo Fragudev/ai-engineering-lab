@@ -1,0 +1,8 @@
+# scripts/eval.sh runs the app jar with this profile active — no web server, just the
+# EvalCliRunner (docs/roadmap.md Phase 4).
+spring:
+  main:
+    web-application-type: none
+  kafka:
+    listener:
+      auto-startup: false

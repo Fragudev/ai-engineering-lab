@@ -30,6 +30,27 @@
       <groupId>io.github.fragudev.ailab</groupId>
       <artifactId>conversation</artifactId>
     </dependency>
+    <!-- Resolving a golden-dataset case's gold_chunk_refs ("title#ordinal") against real ingested
+         content is evaluation's own concern, not something app should do on its behalf — knowledge
+         (Chunk) and ingestion (Document) were not in this module's original dependency list
+         (docs/architecture.md #3), corrected here once the real requirement was understood, the same
+         way Phase 3 corrected the knowledge/rag boundary. -->
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>knowledge</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>ingestion</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-yaml</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>

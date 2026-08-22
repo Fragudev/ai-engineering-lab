@@ -1,0 +1,234 @@
+package io.github.fragudev.ailab.evaluation;
+
+import io.github.fragudev.ailab.evaluation.internal.AbstentionMetrics;
+import io.github.fragudev.ailab.evaluation.internal.CitationMetrics;
+import io.github.fragudev.ailab.evaluation.internal.DatasetLoader;
+import io.github.fragudev.ailab.evaluation.internal.EvalResultRepository;
+import io.github.fragudev.ailab.evaluation.internal.EvalRunRepository;
+import io.github.fragudev.ailab.evaluation.internal.GoldChunkResolver;
+import io.github.fragudev.ailab.evaluation.internal.LatencyStats;
+import io.github.fragudev.ailab.evaluation.internal.LlmJudge;
+import io.github.fragudev.ailab.evaluation.internal.RepeatedMetric;
+import io.github.fragudev.ailab.evaluation.internal.ReportWriter;
+import io.github.fragudev.ailab.evaluation.internal.RetrievalMetrics;
+import io.github.fragudev.ailab.knowledge.SearchResult;
+import io.github.fragudev.ailab.rag.RagAnswer;
+import io.github.fragudev.ailab.rag.RagAnswerChunk;
+import io.github.fragudev.ailab.rag.RagPipeline;
+import io.github.fragudev.ailab.rag.RagProfile;
+import io.github.fragudev.ailab.rag.RagProfiles;
+import io.github.fragudev.ailab.shared.EvalResultId;
+import io.github.fragudev.ailab.shared.EvalRunId;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+
+/**
+ * Runs the golden dataset for real against the running system's own {@link RagPipeline} — no
+ * mocking, the same "verify against real conditions" discipline as every other module here. See
+ * docs/roadmap.md Phase 4 and docs/ai-evaluation.md.
+ */
+@Service
+public class EvalRunner {
+
+    private final DatasetLoader datasetLoader;
+    private final GoldChunkResolver goldChunkResolver;
+    private final RagPipeline ragPipeline;
+    private final LlmJudge llmJudge;
+    private final EvalRunRepository runRepository;
+    private final EvalResultRepository resultRepository;
+    private final ReportWriter reportWriter;
+
+    public EvalRunner(
+            DatasetLoader datasetLoader,
+            GoldChunkResolver goldChunkResolver,
+            RagPipeline ragPipeline,
+            LlmJudge llmJudge,
+            EvalRunRepository runRepository,
+            EvalResultRepository resultRepository,
+            ReportWriter reportWriter) {
+        this.datasetLoader = datasetLoader;
+        this.goldChunkResolver = goldChunkResolver;
+        this.ragPipeline = ragPipeline;
+        this.llmJudge = llmJudge;
+        this.runRepository = runRepository;
+        this.resultRepository = resultRepository;
+        this.reportWriter = reportWriter;
+    }
+
+    /** Runs the dataset and writes the Markdown report, without exposing
+     * {@code evaluation.internal.ReportWriter} to callers outside this module (e.g. {@code app}'s
+     * CLI entry point). {@code recordedProfile} controls whether the report labels its own numbers
+     * as mechanism-only (see {@code ReportWriter}). Returns the written file's path. */
+    public Path runAndWriteReport(EvalRunConfig config, Path reportsDir, boolean recordedProfile) {
+        EvalReport report = run(config);
+        return reportWriter.write(report, reportsDir, recordedProfile);
+    }
+
+    public EvalReport run(EvalRunConfig config) {
+        EvalDataset dataset = datasetLoader.load(config.datasetPath());
+        List<EvalCase> cases = datasetLoader.casesFor(dataset);
+        if (cases.isEmpty()) {
+            throw new IllegalStateException("Dataset at " + config.datasetPath() + " has no cases");
+        }
+
+        List<ProfileSummary> summaries = new ArrayList<>();
+        String modelUsed = "unknown";
+        for (String profileName : config.ragProfiles()) {
+            RagProfile profile = RagProfiles.byName(profileName)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown ragProfile: " + profileName));
+            ProfileSummary summary = runProfile(dataset, cases, profile, config);
+            summaries.add(summary);
+            modelUsed = firstModelUsed(summary).orElse(modelUsed);
+        }
+        return new EvalReport(dataset, config, summaries, modelUsed, Instant.now());
+    }
+
+    private ProfileSummary runProfile(
+            EvalDataset dataset, List<EvalCase> cases, RagProfile profile, EvalRunConfig config) {
+        List<List<CaseResult>> repetitions = new ArrayList<>();
+        for (int rep = 0; rep < config.repetitions(); rep++) {
+            EvalRun run = runRepository.save(
+                    new EvalRun(EvalRunId.generate(), dataset.id(), profile.name(), "pending", config.hardware()));
+
+            List<CaseResult> outcomes = new ArrayList<>();
+            for (EvalCase evalCase : cases) {
+                CaseResult result = runCase(evalCase, profile, config.runJudge());
+                outcomes.add(result);
+                resultRepository.save(new EvalResult(
+                        EvalResultId.generate(),
+                        run.id(),
+                        evalCase.id(),
+                        result.answer(),
+                        result.metrics().toMap()));
+            }
+            run.markFinished();
+            runRepository.save(run);
+            repetitions.add(outcomes);
+        }
+        return summarize(profile, repetitions);
+    }
+
+    private CaseResult runCase(EvalCase evalCase, RagProfile profile, boolean runJudge) {
+        Set<UUID> goldChunkIds = Arrays.stream(evalCase.goldChunkRefs())
+                .map(goldChunkResolver::resolve)
+                .flatMap(Optional::stream)
+                .collect(Collectors.toSet());
+
+        List<SearchResult> retrieved =
+                ragPipeline.search(evalCase.question(), profile).results();
+        double recall = RetrievalMetrics.recallAtK(retrieved, goldChunkIds);
+        double mrr = RetrievalMetrics.reciprocalRank(retrieved, goldChunkIds);
+
+        Instant start = Instant.now();
+        RagAnswerChunk lastChunk =
+                ragPipeline.answer(List.of(), evalCase.question(), profile).blockLast();
+        Duration latency = Duration.between(start, Instant.now());
+        if (lastChunk == null || lastChunk.aggregate() == null) {
+            throw new IllegalStateException(
+                    "RagPipeline.answer produced no terminal chunk for case " + evalCase.caseKey());
+        }
+        RagAnswer answer = lastChunk.aggregate();
+
+        double citationPrecision = CitationMetrics.precision(answer.citations(), goldChunkIds);
+        double citationRecall = CitationMetrics.recall(answer.citations(), goldChunkIds);
+
+        Boolean abstentionCorrect =
+                evalCase.category() == EvalCaseCategory.UNANSWERABLE ? AbstentionMetrics.abstained(answer) : null;
+
+        Double judgeCorrectness = null;
+        Double judgeFaithfulness = null;
+        if (runJudge) {
+            var judged = llmJudge.judge(evalCase.question(), evalCase.expectedAnswer(), answer.content());
+            judgeCorrectness = judged.correctness();
+            judgeFaithfulness = judged.faithfulness();
+        }
+
+        CaseMetrics metrics = new CaseMetrics(
+                recall,
+                mrr,
+                citationPrecision,
+                citationRecall,
+                abstentionCorrect,
+                latency,
+                answer.usage().promptTokens(),
+                answer.usage().completionTokens(),
+                judgeCorrectness,
+                judgeFaithfulness);
+        return new CaseResult(evalCase, answer.content(), answer.model(), metrics);
+    }
+
+    private static ProfileSummary summarize(RagProfile profile, List<List<CaseResult>> repetitions) {
+        List<Double> recallSamples = new ArrayList<>();
+        List<Double> mrrSamples = new ArrayList<>();
+        List<Double> precisionSamples = new ArrayList<>();
+        List<Double> citationRecallSamples = new ArrayList<>();
+        List<Double> abstentionSamples = new ArrayList<>();
+        List<Duration> latencies = new ArrayList<>();
+        long promptTokens = 0;
+        long completionTokens = 0;
+
+        for (List<CaseResult> repetition : repetitions) {
+            recallSamples.add(meanOf(repetition, r -> r.metrics().recallAtK()));
+            mrrSamples.add(meanOf(repetition, r -> r.metrics().reciprocalRank()));
+            precisionSamples.add(meanOf(repetition, r -> r.metrics().citationPrecision()));
+            citationRecallSamples.add(meanOf(repetition, r -> r.metrics().citationRecall()));
+
+            List<Boolean> abstentions = repetition.stream()
+                    .map(r -> r.metrics().abstentionCorrect())
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (!abstentions.isEmpty()) {
+                abstentionSamples.add(
+                        abstentions.stream().filter(Boolean::booleanValue).count() / (double) abstentions.size());
+            }
+
+            repetition.forEach(r -> latencies.add(r.metrics().latency()));
+            promptTokens += repetition.stream()
+                    .mapToLong(r -> r.metrics().promptTokens())
+                    .sum();
+            completionTokens += repetition.stream()
+                    .mapToLong(r -> r.metrics().completionTokens())
+                    .sum();
+        }
+
+        return new ProfileSummary(
+                profile.name(),
+                RepeatedMetric.of(recallSamples),
+                RepeatedMetric.of(mrrSamples),
+                RepeatedMetric.of(precisionSamples),
+                RepeatedMetric.of(citationRecallSamples),
+                RepeatedMetric.of(abstentionSamples),
+                LatencyStats.of(latencies),
+                promptTokens,
+                completionTokens,
+                repetitions);
+    }
+
+    private static double meanOf(List<CaseResult> results, java.util.function.ToDoubleFunction<CaseResult> extractor) {
+        List<Double> values = results.stream()
+                .mapToDouble(extractor)
+                .filter(d -> !Double.isNaN(d))
+                .boxed()
+                .toList();
+        return values.isEmpty()
+                ? Double.NaN
+                : values.stream().mapToDouble(Double::doubleValue).average().orElse(Double.NaN);
+    }
+
+    private static Optional<String> firstModelUsed(ProfileSummary summary) {
+        return summary.repetitions().stream()
+                .flatMap(List::stream)
+                .map(CaseResult::modelUsed)
+                .findFirst();
+    }
+}

@@ -2,6 +2,7 @@ package io.github.fragudev.ailab.knowledge.internal;
 
 import io.github.fragudev.ailab.knowledge.Chunk;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 public interface ChunkRepository extends JpaRepository<Chunk, UUID> {
 
     List<Chunk> findByDocumentIdOrderByOrdinalAsc(UUID documentId);
+
+    Optional<Chunk> findByDocumentIdAndOrdinal(UUID documentId, int ordinal);
 
     long countByDocumentId(UUID documentId);
 
