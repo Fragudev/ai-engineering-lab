@@ -1,0 +1,141 @@
+.github/workflows/nightly-eval.yml
+  s_199f3aa6ddf0a0::t_f115cbb8d2a09e 1-90
+app/src/main/java/io/github/fragudev/ailab/EvalCliRunner.java
+  s_f6c2719e97e037::t_b72e0524488b58 1-81
+app/src/test/java/io/github/fragudev/ailab/EvaluationFlowIntegrationTest.java
+  s_f6c2719e97e037::t_933a90e91e9e32 1-173
+corpus/MANIFEST.yml
+  s_f6c2719e97e037::t_ff6e2545308e79 6-13,15-16,18-32
+eval/baseline.json
+  s_f6c2719e97e037::t_8b7b44d74da99e 1-113
+eval/reports/2026-08-22-dense-only-hybrid-hybrid-rerank-hybrid-rerank-llm.json
+  s_f6c2719e97e037::t_9999a276a29668 1-113
+eval/reports/2026-08-22-dense-only-hybrid-hybrid-rerank-hybrid-rerank-llm.md
+  s_f6c2719e97e037::t_ce9849bfa57db8 1-24
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalReport.java
+  s_f6c2719e97e037::t_1cab84a9e5fe46 1-11
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalRunConfig.java
+  s_f6c2719e97e037::t_d5d7a2c79efd99 1-22
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalRunner.java
+  s_f6c2719e97e037::t_aed8791ba854f3 1-234
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/GoldChunkResolver.java
+  s_f6c2719e97e037::t_a48c6ecb6792ce 1-57
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/LlmJudge.java
+  s_f6c2719e97e037::t_c5ac7a9354f211 1-77
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/AbstentionMetricsTest.java
+  s_f6c2719e97e037::t_db70dd380a2b6a 1-29
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/CitationMetricsTest.java
+  s_f6c2719e97e037::t_308018aa098310 1-62
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/ReportWriterTest.java
+  s_f6c2719e97e037::t_79a6886e30d4ca 1-108
+scripts/check-eval-regression.sh
+  s_f6c2719e97e037::t_cf90e51eeb1694 1-85
+scripts/eval.sh
+  s_f6c2719e97e037::t_ba2d2c8d62b7da 1-27
+scripts/seed.sh
+  s_f6c2719e97e037::t_f409b6ae02fd31 1-67
+app/src/main/resources/application-eval-cli.yml
+  s_f6c2719e97e037::t_c65e1475f0df0b 1-8
+app/src/main/resources/db/migration/V6__create_evaluation_tables.sql
+  s_f6c2719e97e037::t_7f9d9a17d1ff3d 1-49
+corpus/ATTRIBUTION.md
+  s_f6c2719e97e037::t_a3ba1563f06b5e 8-10,24-25,28-29,33-37
+docs/architecture.md
+  s_f6c2719e97e037::t_f879a272f91087 92,103-108,142-143,176-184,502
+eval/dataset/core.yaml
+  s_f6c2719e97e037::t_85a79492d146d5 1-215
+infrastructure/docker-compose.ci-eval.yml
+  s_f6c2719e97e037::t_8a95d1a7eef23a 1-9
+modules/evaluation/pom.xml
+  s_f6c2719e97e037::t_3db03e63a362b5 33-53
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/CaseMetrics.java
+  s_f6c2719e97e037::t_8435943d49b537 1-55
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/CaseResult.java
+  s_f6c2719e97e037::t_27e14a6a8bf6e2 1-3
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalCase.java
+  s_f6c2719e97e037::t_9615ba255fcccd 1-116
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalCaseCategory.java
+  s_f6c2719e97e037::t_7764f807e1f7bb 1-11
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalDataset.java
+  s_f6c2719e97e037::t_cfda6c99085d4c 1-52
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalResult.java
+  s_f6c2719e97e037::t_50085881450acf 1-78
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalRun.java
+  s_f6c2719e97e037::t_9cff8d44de44b6 1-82
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/ProfileSummary.java
+  s_f6c2719e97e037::t_afe5a0d544b1a5 1-19
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/AbstentionMetrics.java
+  s_f6c2719e97e037::t_fe10651756e1a7 1-16
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/CitationMetrics.java
+  s_f6c2719e97e037::t_ae472bed077b79 1-37
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/DatasetLoader.java
+  s_f6c2719e97e037::t_44b395644bc3f0 1-81
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/EvalCaseRepository.java
+  s_f6c2719e97e037::t_552aa1e1bb1aac 1-14
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/EvalDatasetRepository.java
+  s_f6c2719e97e037::t_643a4339d5a713 1-11
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/EvalResultRepository.java
+  s_f6c2719e97e037::t_2b544eaba80a56 1-11
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/EvalRunRepository.java
+  s_f6c2719e97e037::t_b6a9a01184bf0f 1-7
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/LatencyStats.java
+  s_f6c2719e97e037::t_feb3876db40a00 1-26
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/MetricsConverter.java
+  s_f6c2719e97e037::t_b4d3bc729a2bd3 1-45
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/RepeatedMetric.java
+  s_f6c2719e97e037::t_92b12b509626c4 1-22
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/ReportWriter.java
+  s_f6c2719e97e037::t_b196bb0da0b41f 1-193
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/RetrievalMetrics.java
+  s_f6c2719e97e037::t_f0de17b0e74af1 1-42
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/LatencyStatsTest.java
+  s_f6c2719e97e037::t_3b98b8a10e631e 1-46
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/RepeatedMetricTest.java
+  s_f6c2719e97e037::t_64f2bcd336e1fb 1-50
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/RetrievalMetricsTest.java
+  s_f6c2719e97e037::t_679eea6e298415 1-72
+modules/ingestion/src/main/java/io/github/fragudev/ailab/ingestion/IngestionService.java
+  s_f6c2719e97e037::t_42e9e5bed9717f 14,92-99
+modules/ingestion/src/main/java/io/github/fragudev/ailab/ingestion/internal/DocumentRepository.java
+  s_f6c2719e97e037::t_e13003e54a5ddb 11-12
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/ChunkService.java
+  s_f6c2719e97e037::t_a871700c8849a6 5,26-31
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/ChunkRepository.java
+  s_f6c2719e97e037::t_0c06724cdfd853 5,16-17
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/EvalCaseId.java
+  s_f6c2719e97e037::t_37ee7b25ea3689 1-20
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/EvalDatasetId.java
+  s_f6c2719e97e037::t_56c78943b8cc43 1-20
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/EvalResultId.java
+  s_f6c2719e97e037::t_28c6d6abed933f 1-20
+modules/shared/src/main/java/io/github/fragudev/ailab/shared/EvalRunId.java
+  s_f6c2719e97e037::t_c02e94dd6cdf7a 1-20
+scripts/fetch-corpus.sh
+  s_f6c2719e97e037::t_a39705062cb1b9 1-81
+docs/roadmap.md
+  s_f6c2719e97e037::t_0ca3ac6d3e36e3 252-253,257-330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "27c80dc90485df948222338f84f7731af2bc62e4",
+  "prompts": {},
+  "sessions": {
+    "s_199f3aa6ddf0a0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a028a8-71eb-79a3-a342-190aca4a6bd5",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
