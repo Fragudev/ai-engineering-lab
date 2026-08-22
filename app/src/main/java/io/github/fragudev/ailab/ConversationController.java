@@ -1,12 +1,22 @@
 package io.github.fragudev.ailab;
 
+import io.github.fragudev.ailab.aiprovider.ChatMessage;
+import io.github.fragudev.ailab.conversation.CitationInput;
+import io.github.fragudev.ailab.conversation.Conversation;
 import io.github.fragudev.ailab.conversation.ConversationService;
+import io.github.fragudev.ailab.rag.RagAnswer;
+import io.github.fragudev.ailab.rag.RagAnswerChunk;
+import io.github.fragudev.ailab.rag.RagCitationResult;
+import io.github.fragudev.ailab.rag.RagPipeline;
+import io.github.fragudev.ailab.rag.RagProfile;
 import io.github.fragudev.ailab.shared.ConversationId;
+import io.github.fragudev.ailab.shared.DocumentId;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,14 +36,21 @@ class ConversationController {
     private static final Duration SSE_TIMEOUT = Duration.ofMinutes(5);
 
     private final ConversationService conversationService;
+    private final RagPipeline ragPipeline;
 
-    ConversationController(ConversationService conversationService) {
+    ConversationController(ConversationService conversationService, RagPipeline ragPipeline) {
         this.conversationService = conversationService;
+        this.ragPipeline = ragPipeline;
     }
 
     @PostMapping
-    ResponseEntity<ConversationResponse> create() {
-        var conversation = conversationService.createConversation();
+    ResponseEntity<ConversationResponse> create(
+            @RequestBody(required = false) @Nullable CreateConversationRequest request) {
+        String ragProfile = request == null ? null : request.ragProfile();
+        if (ragProfile != null) {
+            RetrievalController.resolveProfile(ragProfile); // throws 400 if unknown, before persisting
+        }
+        var conversation = conversationService.createConversation(ragProfile);
         return ResponseEntity.status(HttpStatus.CREATED).body(ConversationResponse.from(conversation));
     }
 
@@ -45,7 +62,7 @@ class ConversationController {
     @GetMapping("/{id}/messages")
     List<MessageResponse> messages(@PathVariable UUID id) {
         return conversationService.getMessages(ConversationId.of(id)).stream()
-                .map(MessageResponse::from)
+                .map(message -> MessageResponse.from(message, conversationService.getCitations(message.id())))
                 .toList();
     }
 
@@ -54,24 +71,40 @@ class ConversationController {
         // Looked up eagerly (throws synchronously -> a real 404) before the SSE stream commits;
         // see openapi.yaml for why a failure after this point can only surface in-band.
         ConversationId conversationId = ConversationId.of(id);
-        conversationService.getConversation(conversationId);
+        Conversation conversation = conversationService.getConversation(conversationId);
+
+        String effectiveProfileName = request.ragProfile() != null ? request.ragProfile() : conversation.ragProfile();
 
         // Captured on the request thread: once streaming starts, the provider call may continue
         // on a different thread, and MDC does not reliably follow it.
         String traceId = MDC.get("traceId");
-
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT.toMillis());
-        conversationService
-                .sendMessage(conversationId, request.content())
+
+        if (effectiveProfileName == null) {
+            conversationService
+                    .sendMessage(conversationId, request.content())
+                    .subscribe(
+                            chunk -> onChunk(emitter, chunk, traceId),
+                            error -> onError(emitter, error),
+                            () -> onComplete(emitter));
+            return emitter;
+        }
+
+        RagProfile profile = RetrievalController.resolveProfile(effectiveProfileName);
+        List<ChatMessage> history = conversationService.getHistoryAsChatMessages(conversationId);
+        conversationService.appendUserMessage(conversationId, request.content());
+
+        ragPipeline
+                .answer(history, request.content(), profile)
                 .subscribe(
-                        chunk -> onChunk(emitter, chunk, traceId),
+                        chunk -> onRagChunk(emitter, conversationId, chunk, traceId),
                         error -> onError(emitter, error),
                         () -> onComplete(emitter));
         return emitter;
     }
 
     private static void onChunk(
-            SseEmitter emitter, io.github.fragudev.ailab.aiprovider.ChatChunk chunk, String traceId) {
+            SseEmitter emitter, io.github.fragudev.ailab.aiprovider.ChatChunk chunk, @Nullable String traceId) {
         try {
             if (chunk.last()) {
                 emitter.send(SseEmitter.event()
@@ -83,6 +116,47 @@ class ConversationController {
         } catch (IOException e) {
             emitter.completeWithError(e);
         }
+    }
+
+    private void onRagChunk(
+            SseEmitter emitter, ConversationId conversationId, RagAnswerChunk chunk, @Nullable String traceId) {
+        try {
+            if (chunk.last()) {
+                RagAnswer answer = chunk.aggregate();
+                persistRagAnswer(conversationId, answer);
+                emitter.send(SseEmitter.event()
+                        .name("usage")
+                        .data(UsageSummary.from(answer, traceId), MediaType.APPLICATION_JSON));
+            } else if (chunk.citation() != null) {
+                emitter.send(SseEmitter.event()
+                        .name("citation")
+                        .data(CitationEvent.from(chunk.citation()), MediaType.APPLICATION_JSON));
+            } else if (!chunk.deltaContent().isEmpty()) {
+                emitter.send(SseEmitter.event().name("token").data(chunk.deltaContent()));
+            }
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+        }
+    }
+
+    private void persistRagAnswer(ConversationId conversationId, RagAnswer answer) {
+        List<CitationInput> citations = answer.citations().stream()
+                .map(ConversationController::toCitationInput)
+                .toList();
+        conversationService.recordAssistantAnswer(
+                conversationId,
+                answer.content(),
+                answer.model(),
+                answer.usage().promptTokens(),
+                answer.usage().completionTokens(),
+                answer.latency().toMillis(),
+                answer.estimatedCostUsd(),
+                citations);
+    }
+
+    private static CitationInput toCitationInput(RagCitationResult citation) {
+        return new CitationInput(
+                citation.chunkId(), DocumentId.of(citation.documentId()), citation.score(), citation.quotedSpan());
     }
 
     private static void onError(SseEmitter emitter, Throwable error) {

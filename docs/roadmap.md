@@ -12,7 +12,7 @@ than a step toward some distant completion.
 | [0](#phase-0--foundations) | Foundations | Complete |
 | [1](#phase-1--chat-vertical-slice) | Chat vertical slice | Complete |
 | [2](#phase-2--asynchronous-ingestion) | Asynchronous ingestion | Complete |
-| [3](#phase-3--rag) | RAG | Not started |
+| [3](#phase-3--rag) | RAG | Complete |
 | [4](#phase-4--evaluation) | Evaluation | Not started |
 | [5](#phase-5--tools) | Tools | Not started |
 | [6](#phase-6--agentic-workflow) | Agentic workflow | Not started |
@@ -196,15 +196,54 @@ deferred to Phase 3, when the demo corpus is actually needed.
 Hybrid retrieval, filtering, optional reranking, context building, citation extraction, the
 retrieval debug endpoint, and named RAG profiles.
 
-**ADRs:** 0007 hybrid retrieval and fusion · 0008 RAG pipeline architecture.
+**ADRs:** [0007](adr/0007-hybrid-retrieval-and-fusion.md) hybrid retrieval and fusion ·
+[0008](adr/0008-rag-pipeline-architecture.md) RAG pipeline architecture.
 
 **Acceptance**
 
-- Questions about the demo corpus are answered with citations that link back to source documents.
-- `POST /retrieval:search` shows candidates and scores before and after fusion and reranking.
-- At least two RAG profiles are selectable per request.
-- A question with no supporting context produces an explicit "insufficient context" answer rather
-  than an invented one.
+- [x] Questions about the demo corpus are answered with citations that link back to source
+      documents. Verified via `RagFlowIntegrationTest` (Testcontainers, real Postgres): a
+      retrieval-augmented turn returns `citation` SSE events and persists `Citation` rows linked to
+      the source chunk/document, with the `[N]` markers themselves stripped from both the streamed
+      text and the persisted message content. Also live-verified structurally against the full
+      `docker compose` stack: `GET /rag/profiles`, `POST /retrieval:search` (real per-candidate
+      vector/lexical/fused/rerank scores against ingested chunks), and the abstention path below —
+      the citation-bearing *happy* path specifically relies on `recorded`'s hash-seeded embeddings
+      matching by exact string (documented in the test's own javadoc), which live curl verification
+      can't stage as easily as a controlled test; the automated test is the real proof here.
+- [x] `POST /retrieval:search` shows candidates and scores before and after fusion and reranking.
+      Verified live: response includes `vectorDistance`/`lexicalRank` (per-retriever, before
+      fusion), `fusedScore` (after fusion), and `rerankScore`/`finalRank` (after reranking) per
+      candidate. Also covered by `RetrievalSearchIntegrationTest` across all 4 profiles.
+- [x] At least two RAG profiles are selectable per request. Four named profiles ship:
+      `dense-only`, `hybrid`, `hybrid-rerank` (MMR), `hybrid-rerank-llm` (LLM reranking) — see
+      ADR-0007 for why two reranking techniques exist when no cross-encoder model is available.
+      `GET /api/v1/rag/profiles` lists them live; `RetrievalSearchIntegrationTest` exercises all
+      four, including the LLM-reranker's fallback-to-fused-order path when the local model's
+      response can't be parsed as a ranking.
+- [x] A question with no supporting context produces an explicit "insufficient context" answer
+      rather than an invented one. Verified live: a real question against a real ingested document,
+      under `recorded` embeddings (semantically meaningless, so no real match), correctly triggered
+      the abstention gate — `"The knowledge base doesn't contain enough information to answer this
+      question"`, `model: "none"`, zero citations persisted (confirmed against the `citation` table
+      directly). Also covered by `RagFlowIntegrationTest`. The gate is a deterministic threshold on
+      raw vector distance, not a fused score or a prompt instruction alone — see ADR-0008's
+      "alternatives considered" for why.
+
+Two design corrections made during implementation, not assumed going in: the original module-boundary
+reading had `rag` owning hybrid search; `docs/architecture.md` #3 actually assigns "hybrid search,
+reranking" to `knowledge`, so `HybridSearchService` and both rerankers live there, and `rag` is purely
+the normalize → build-context → generate → extract-citations orchestration over it (ADR-0008). And a
+filter-by-fused-score step, planned as part of the retrieve→filter→rerank pipeline, was dropped after
+realizing RRF scores reflect rank position, not absolute relevance, and can't tell "nothing relevant
+exists" from "here's the best of what's there" — the abstention gate uses raw vector distance instead
+(ADR-0007, ADR-0008).
+
+Scope notes: query normalization (rewriting a conversational follow-up into a standalone question) is
+a real LLM call, not a stub, but only runs when conversation history exists, and falls back to the
+original query on any failure; `RagProfile.maxVectorDistance` (0.6 across all four profiles) and
+MMR's `λ` (0.7) are both starting heuristics, explicitly not claimed as measured (AGENTS.md rule 2) —
+tuning them against a real golden dataset is Phase 4's job, not invented here.
 
 ---
 

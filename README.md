@@ -6,10 +6,9 @@ OpenTelemetry tracing, and an evaluation harness that produces numbers instead o
 
 Runs entirely on your own machine against a local model server. No API key required.
 
-> **Status: design phase.** The architecture, module boundaries, contracts and roadmap are
-> documented and reviewed. Implementation has not started. Every capability below is marked with
-> its current state, and nothing is claimed to work until it does. See
-> [`docs/roadmap.md`](docs/roadmap.md) for the phase plan.
+> **Status: Phases 0–3 complete** (foundations, chat, async ingestion, RAG). Every capability below
+> is marked with its current state, and nothing is claimed to work until it does. See
+> [`docs/roadmap.md`](docs/roadmap.md) for the phase plan and what each phase actually verified.
 
 ---
 
@@ -33,11 +32,11 @@ behind a set of architecture conversations.
 
 | Capability | What it does | Status |
 |---|---|---|
-| Chat | Multi-turn conversations, SSE streaming, token and cost accounting | Planned — Phase 1 |
-| Ingestion | Upload → parse → chunk → embed → index, asynchronously over Kafka, with retries and a dead-letter topic | Planned — Phase 2 |
-| Hybrid retrieval | Vector kNN + PostgreSQL full-text, fused with Reciprocal Rank Fusion | Planned — Phase 3 |
-| RAG with citations | Configurable pipeline, per-claim source attribution, unsupported-claim flagging | Planned — Phase 3 |
-| Retrieval debugging | An endpoint that shows what was retrieved, with scores before and after reranking | Planned — Phase 3 |
+| Chat | Multi-turn conversations, SSE streaming, token and cost accounting | Done — Phase 1 |
+| Ingestion | Upload → parse → chunk → embed → index, asynchronously over Kafka, with retries and a dead-letter topic | Done — Phase 2 |
+| Hybrid retrieval | Vector kNN + PostgreSQL full-text, fused with Reciprocal Rank Fusion | Done — Phase 3 |
+| RAG with citations | Configurable pipeline, per-claim source attribution, deterministic "insufficient context" abstention | Done — Phase 3 |
+| Retrieval debugging | An endpoint that shows what was retrieved, with scores before and after fusion and reranking | Done — Phase 3 |
 | Evaluation | Golden dataset, recall@k, MRR, citation precision, latency, token cost, profile comparison | Planned — Phase 4 |
 | Tool calling | Schema-validated registry with scoped authorization, timeouts and full tracing | Planned — Phase 5 |
 | Agentic workflow | An explicit state machine with persisted state, resumable and compensable | Planned — Phase 6 |
@@ -74,8 +73,7 @@ flowchart TB
     OBS["Grafana<br/>Prometheus · Tempo · Loki"]
 
     UI -->|REST + SSE| API
-    API --> CONV & ING & TOOLS & WF & EVAL
-    CONV --> RAG
+    API --> CONV & ING & TOOLS & WF & EVAL & RAG
     RAG --> KN
     WF --> RAG & TOOLS
     MCP --> TOOLS

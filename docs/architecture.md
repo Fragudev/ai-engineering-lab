@@ -253,7 +253,7 @@ PostgreSQL 17 with pgvector. Flyway migrations, forward-only.
 conversation(id, title, rag_profile, created_at, updated_at)
 message(id, conversation_id, role, content, model,
         prompt_tokens, completion_tokens, latency_ms, estimated_cost_usd, created_at)
-citation(id, message_id, chunk_id, score, quoted_span)
+citation(id, message_id, chunk_id, document_id, score, quoted_span, ordinal, created_at)
 
 document(id, source_uri, title, mime_type, content_hash UNIQUE,
          status, metadata JSONB, created_at)
@@ -288,6 +288,12 @@ base64-encoded file payload).
 **Indexes.** HNSW on `chunk.embedding` — better recall-per-latency than IVFFlat and, unlike IVFFlat,
 it needs no representative training set, which matters when the index starts empty. GIN on
 `chunk.content_tsv` for lexical search, GIN on metadata JSONB for filtered retrieval.
+
+**`citation` is denormalized, not joined against `chunk`/`document` at read time.** `conversation`
+doesn't depend on `knowledge` (§3), so `score` and `quoted_span` are copied in by `rag` at generation
+time rather than looked up later — `chunk_id`/`document_id` are still real FKs at the database level,
+the module boundary is a Java/ArchUnit concern, not a schema one (same precedent as `chunk.document_id`
+referencing `document`, a different module, since Phase 2).
 
 **Embedding dimension is fixed at 1024** (`bge-m3`) across every environment. It is a schema-level
 commitment: changing the embedding model invalidates every stored vector and requires a full
@@ -343,20 +349,29 @@ that, the abstraction would leak the moment the model changed. [ADR-0004](adr/00
 
 ## 9. RAG pipeline
 
-Eight explicit stages. Each is a replaceable interface and each emits its own OpenTelemetry span.
+Split across two modules per §3: `knowledge` owns retrieval and reranking (it's the one that knows
+how to rank chunks), `rag` owns everything around generating a grounded, cited answer from what
+`knowledge` found. Each stage emits its own OpenTelemetry span.
 
 ```mermaid
 flowchart LR
-    Q[Query] --> N[1 Normalize<br/>rewrite with history]
-    N --> E[2 Embed]
-    E --> R[3 Retrieve<br/>vector + lexical]
-    R --> F[4 Filter<br/>metadata · threshold · dedupe]
-    F --> RR[5 Rerank<br/>optional]
-    RR --> C[6 Build context<br/>token budget · provenance]
-    C --> G[7 Generate<br/>streaming]
-    G --> CE[8 Extract citations<br/>flag unsupported claims]
+    Q[Query] --> N["1 Normalize<br/>rewrite with history<br/>(rag)"]
+    N --> R["2 Retrieve<br/>vector + lexical<br/>(knowledge)"]
+    R --> F["3 Fuse<br/>Reciprocal Rank Fusion<br/>(knowledge)"]
+    F --> RR["4 Rerank — optional<br/>MMR or LLM<br/>(knowledge)"]
+    RR --> AB{"Abstention gate<br/>(rag)"}
+    AB -->|below threshold| DECLINE["insufficient-context<br/>answer, no generation"]
+    AB -->|ok| C["5 Build context<br/>token budget · provenance<br/>(rag)"]
+    C --> G["6 Generate<br/>streaming<br/>(rag → ai-provider)"]
+    G --> CE["7 Extract citations<br/>from [N] markers<br/>(rag)"]
     CE --> A[Answer]
 ```
+
+The abstention gate — ADR-0008 — checks raw vector distance, not the fused score: RRF scores reflect
+rank position, not absolute relevance, so they can't distinguish "nothing relevant exists" from
+"here's the best of what's there." A metadata/threshold/dedupe filter stage was planned between
+retrieve and rerank but folded into fusion + the abstention gate once that distinction became clear
+during implementation — see ADR-0007's "alternatives considered".
 
 ### Profiles make quality measurable
 
@@ -389,6 +404,11 @@ region, and never permitted to trigger a tool invocation on its own authority. D
 
 ### Chat with RAG
 
+`app` is the composition root: `conversation` and `rag` never call each other directly (§3's
+dependency table doesn't list that edge either way) — `app` fetches history and appends the user
+turn via `conversation`, drives the answer via `rag`, then persists the reply + citations back
+through `conversation` once the stream completes (ADR-0008).
+
 ```mermaid
 sequenceDiagram
     participant U as Browser
@@ -400,21 +420,29 @@ sequenceDiagram
     participant L as LM Studio
 
     U->>A: POST /conversations/{id}/messages (Accept: text/event-stream)
-    A->>C: append user message
-    C->>R: query + history
-    R->>P: embed(normalized query)
+    A->>C: history (excl. this turn), then append user message
+    A->>R: answer(history, query, profile)
+    R->>R: normalize query (LLM call, only if history exists)
+    R->>K: search(normalized query, options)
+    K->>P: embed(query)
     P->>L: /v1/embeddings
-    R->>K: hybrid search (vector + lexical, RRF)
-    K-->>R: candidate chunks + scores
-    R->>R: filter, rerank, build context within token budget
-    R->>P: stream(prompt)
-    P->>L: /v1/chat/completions (stream)
-    loop per token
-        L-->>P: delta
-        P-->>U: SSE: token
+    K->>K: vector + lexical retrieve, fuse (RRF), rerank (optional)
+    K-->>R: ranked chunks + scores
+    alt best match farther than profile's threshold
+        R-->>A: insufficient-context answer, no generation
+    else
+        R->>R: build delimited context, number chunks [1..N]
+        R->>P: stream(system + context + history + query)
+        P->>L: /v1/chat/completions (stream)
+        loop per token
+            L-->>P: delta
+            P-->>A: delta (markers stripped)
+        end
+        A-->>U: SSE: token (per delta)
+        R->>R: resolve [N] markers from the full answer
+        A-->>U: SSE: citation (per resolved source)
     end
-    R-->>U: SSE: citation (per resolved source)
-    C->>C: persist message, tokens, latency, citations
+    A->>C: persist assistant message + citations
     A-->>U: SSE: usage, done
 ```
 

@@ -29,6 +29,9 @@ final class ProblemDetails {
         if (error instanceof NoSuchElementException) {
             return HttpStatus.NOT_FOUND;
         }
+        if (error instanceof IllegalArgumentException) {
+            return HttpStatus.BAD_REQUEST;
+        }
         return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 }
