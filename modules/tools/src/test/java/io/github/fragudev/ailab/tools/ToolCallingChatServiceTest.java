@@ -1,0 +1,297 @@
+package io.github.fragudev.ailab.tools;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.github.fragudev.ailab.aiprovider.ChatChunk;
+import io.github.fragudev.ailab.aiprovider.ChatMessage;
+import io.github.fragudev.ailab.aiprovider.ChatProvider;
+import io.github.fragudev.ailab.aiprovider.ChatRequest;
+import io.github.fragudev.ailab.aiprovider.ChatResponse;
+import io.github.fragudev.ailab.aiprovider.ProviderCapabilities;
+import io.github.fragudev.ailab.aiprovider.TokenUsage;
+import io.github.fragudev.ailab.tools.internal.PendingConfirmationRegistry;
+import io.github.fragudev.ailab.tools.internal.SchemaValidator;
+import io.github.fragudev.ailab.tools.internal.ScopeAuthorizer;
+import io.github.fragudev.ailab.tools.internal.ToolsProperties;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
+
+/**
+ * The tool-calling loop, exercised with a hand-written scripted {@link ChatProvider} and hand-
+ * written {@link Tool} fakes — no mocking framework anywhere in this codebase (see
+ * {@code LmStudioChatProviderTest} for the same style). {@link ToolInvoker} is constructed for
+ * real (schema validation, scope authorization and timeout are genuinely exercised) but with a
+ * {@code null} repository/metrics: {@code ToolInvoker#invokeForChat} — the only entry point this
+ * class calls — never touches either, only {@code invokeOrThrow}/{@code recordForMessage} do, so
+ * passing {@code null} here is safe and self-verifying (a future change routing persistence through
+ * {@code invokeForChat} would NPE this test immediately rather than silently pass).
+ */
+class ToolCallingChatServiceTest {
+
+    private static final ProviderCapabilities FALLBACK_CAPABILITIES = new ProviderCapabilities(false, false, 8192);
+
+    private final ToolsProperties properties =
+            new ToolsProperties(true, List.of(), Duration.ofSeconds(5), Duration.ofSeconds(5), 3);
+
+    @Test
+    void emptyToolsListIsAnUnmodifiedPassthrough() {
+        ScriptedChatProvider provider = new ScriptedChatProvider(FALLBACK_CAPABILITIES, "Hello there.");
+        ToolCallingChatService service = newService(properties, List.of());
+
+        List<ToolChatChunk> chunks = service.stream(provider, history("hi"), List.of(), ToolCallOrigin.PLAIN_CHAT, null)
+                .collectList()
+                .block(Duration.ofSeconds(5));
+
+        assertThat(provider.requestsSeen()).hasSize(1);
+        assertThat(provider.requestsSeen().get(0).messages()).hasSize(1); // no system prompt injected
+        assertThat(chunks).isNotEmpty();
+        assertThat(chunks.get(chunks.size() - 1).last()).isTrue();
+        assertThat(chunks.get(chunks.size() - 1).aggregate().content()).isEqualTo("Hello there.");
+    }
+
+    @Test
+    void scopeDeniedShortCircuitsWithoutExecutingTheTool() {
+        AtomicInteger executions = new AtomicInteger();
+        Tool deniedTool = fakeTool("weather-like", Set.of("external-api:mock"), false, executions);
+        ScriptedChatProvider provider = new ScriptedChatProvider(
+                FALLBACK_CAPABILITIES,
+                "{\"tool_call\":{\"name\":\"weather-like\",\"arguments\":{}}}",
+                "Sorry, I couldn't check that.");
+        ToolCallingChatService service = newService(properties, List.of(deniedTool));
+
+        List<ToolChatChunk> chunks = service.stream(
+                        provider,
+                        history("weather?"),
+                        List.of(deniedTool.definition()),
+                        ToolCallOrigin.PLAIN_CHAT,
+                        null)
+                .collectList()
+                .block(Duration.ofSeconds(5));
+
+        assertThat(executions).hasValue(0);
+        ToolChatChunk resultChunk =
+                chunks.stream().filter(c -> c.toolResult() != null).findFirst().orElseThrow();
+        assertThat(resultChunk.toolResult().outcome()).isEqualTo(ToolCallOutcome.DENIED);
+    }
+
+    @Test
+    void timeoutIsReportedWithoutHangingTheStream() {
+        Tool slowTool = new Tool() {
+            @Override
+            public ToolDefinition definition() {
+                return new ToolDefinition(
+                        "slow-tool", "1", "never finishes", "{}", "{}", Set.of(), false, Duration.ofMillis(50));
+            }
+
+            @Override
+            public ToolResult execute(ToolExecutionContext context, String argumentsJson) {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return ToolResult.ok("{}");
+            }
+        };
+        ScriptedChatProvider provider = new ScriptedChatProvider(
+                FALLBACK_CAPABILITIES, "{\"tool_call\":{\"name\":\"slow-tool\",\"arguments\":{}}}", "Gave up waiting.");
+        ToolCallingChatService service = newService(properties, List.of(slowTool));
+
+        List<ToolChatChunk> chunks = service.stream(
+                        provider, history("go"), List.of(slowTool.definition()), ToolCallOrigin.PLAIN_CHAT, null)
+                .collectList()
+                .block(Duration.ofSeconds(5));
+
+        ToolChatChunk resultChunk =
+                chunks.stream().filter(c -> c.toolResult() != null).findFirst().orElseThrow();
+        assertThat(resultChunk.toolResult().outcome()).isEqualTo(ToolCallOutcome.TIMEOUT);
+        assertThat(chunks.get(chunks.size() - 1).last()).isTrue();
+    }
+
+    @Test
+    void invalidArgumentsAreFedBackAndTheModelRetries() {
+        AtomicInteger executions = new AtomicInteger();
+        ToolDefinition definition = new ToolDefinition(
+                "needs-value", "1", "requires a value", """
+                {"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object",\
+                "properties":{"value":{"type":"string"}},"required":["value"]}""", "{}", Set.of(), false, Duration.ofSeconds(5));
+        Tool tool = new Tool() {
+            @Override
+            public ToolDefinition definition() {
+                return definition;
+            }
+
+            @Override
+            public ToolResult execute(ToolExecutionContext context, String argumentsJson) {
+                executions.incrementAndGet();
+                return ToolResult.ok("{\"ok\":true}");
+            }
+        };
+        ScriptedChatProvider provider = new ScriptedChatProvider(
+                FALLBACK_CAPABILITIES,
+                "{\"tool_call\":{\"name\":\"needs-value\",\"arguments\":{}}}",
+                "{\"tool_call\":{\"name\":\"needs-value\",\"arguments\":{\"value\":\"ok\"}}}",
+                "Done.");
+        ToolCallingChatService service = newService(properties, List.of(tool));
+
+        List<ToolChatChunk> chunks = service.stream(
+                        provider, history("go"), List.of(definition), ToolCallOrigin.PLAIN_CHAT, null)
+                .collectList()
+                .block(Duration.ofSeconds(5));
+
+        assertThat(provider.requestsSeen()).hasSize(3);
+        assertThat(executions).hasValue(1);
+        List<ToolChatChunk> resultChunks =
+                chunks.stream().filter(c -> c.toolResult() != null).toList();
+        assertThat(resultChunks).hasSize(2);
+        assertThat(resultChunks.get(0).toolResult().outcome()).isEqualTo(ToolCallOutcome.ERROR);
+        assertThat(resultChunks.get(1).toolResult().outcome()).isEqualTo(ToolCallOutcome.OK);
+        assertThat(chunks.get(chunks.size() - 1).aggregate().content()).isEqualTo("Done.");
+    }
+
+    @Test
+    void confirmationGateLatchesAfterAToolIntroducingRetrievedContentExecutes() throws InterruptedException {
+        AtomicInteger kbExecutions = new AtomicInteger();
+        AtomicInteger secondExecutions = new AtomicInteger();
+        Tool kbTool = fakeTool("kb-search", Set.of(), true, kbExecutions);
+        Tool secondTool = fakeTool("second-tool", Set.of(), false, secondExecutions);
+        PendingConfirmationRegistry registry = new PendingConfirmationRegistry();
+        ScriptedChatProvider provider = new ScriptedChatProvider(
+                FALLBACK_CAPABILITIES,
+                "{\"tool_call\":{\"name\":\"kb-search\",\"arguments\":{}}}",
+                "{\"tool_call\":{\"name\":\"second-tool\",\"arguments\":{}}}",
+                "Final answer.");
+        ToolInvoker invoker = new ToolInvoker(
+                new ToolRegistry(List.of(kbTool, secondTool)),
+                new SchemaValidator(),
+                new ScopeAuthorizer(properties),
+                null,
+                null);
+        ToolCallingChatService service = new ToolCallingChatService(invoker, registry, properties);
+
+        // ToolInvoker.invokeForChat genuinely runs each tool on Schedulers.boundedElastic() now (a
+        // real fix, see ToolInvoker's javadoc) — .subscribe() returns before that work necessarily
+        // finishes, so synchronization here is by explicit latches on specific emitted chunks, not
+        // by asserting immediately after subscribing.
+        List<ToolChatChunk> collected = new CopyOnWriteArrayList<>();
+        CountDownLatch pendingLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(1);
+        service.stream(
+                        provider,
+                        history("search then act"),
+                        List.of(kbTool.definition(), secondTool.definition()),
+                        ToolCallOrigin.PLAIN_CHAT,
+                        null)
+                .doOnNext(chunk -> {
+                    collected.add(chunk);
+                    if (chunk.pendingConfirmation() != null) {
+                        pendingLatch.countDown();
+                    }
+                    if (chunk.last()) {
+                        doneLatch.countDown();
+                    }
+                })
+                .subscribe();
+
+        assertThat(pendingLatch.await(5, TimeUnit.SECONDS)).isTrue();
+
+        // kb-search ran ungated (nothing untrusted yet); second-tool's call is now pending confirmation.
+        assertThat(kbExecutions).hasValue(1);
+        assertThat(secondExecutions).hasValue(0);
+        ToolChatChunk pendingChunk = collected.stream()
+                .filter(c -> c.pendingConfirmation() != null)
+                .findFirst()
+                .orElseThrow();
+        UUID callId = pendingChunk.pendingConfirmation().callId();
+        assertThat(pendingChunk.pendingConfirmation().toolName()).isEqualTo("second-tool");
+
+        boolean resolved = registry.resolve(callId, true);
+        assertThat(resolved).isTrue();
+
+        assertThat(doneLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(secondExecutions).hasValue(1);
+        assertThat(collected.get(collected.size() - 1).last()).isTrue();
+        assertThat(collected.get(collected.size() - 1).aggregate().content()).isEqualTo("Final answer.");
+    }
+
+    private static ToolCallingChatService newService(ToolsProperties properties, List<Tool> tools) {
+        ToolInvoker invoker = new ToolInvoker(
+                new ToolRegistry(tools), new SchemaValidator(), new ScopeAuthorizer(properties), null, null);
+        return new ToolCallingChatService(invoker, new PendingConfirmationRegistry(), properties);
+    }
+
+    private static Tool fakeTool(
+            String name, Set<String> requiredScopes, boolean introducesRetrievedContent, AtomicInteger executions) {
+        ToolDefinition definition = new ToolDefinition(
+                name, "1", "test tool", "{}", "{}", requiredScopes, introducesRetrievedContent, Duration.ofSeconds(5));
+        return new Tool() {
+            @Override
+            public ToolDefinition definition() {
+                return definition;
+            }
+
+            @Override
+            public ToolResult execute(ToolExecutionContext context, String argumentsJson) {
+                executions.incrementAndGet();
+                return ToolResult.ok("{\"ok\":true}");
+            }
+        };
+    }
+
+    private static List<ChatMessage> history(String userContent) {
+        return List.of(ChatMessage.user(userContent));
+    }
+
+    /** Returns one scripted response per call, in order, as a single delta + a terminal chunk —
+     * good enough to drive {@link ToolCallingChatService}'s sniffer/parsing, not a real streaming
+     * simulation. */
+    private static final class ScriptedChatProvider implements ChatProvider {
+
+        private final ProviderCapabilities capabilities;
+        private final Deque<String> responses;
+        private final List<ChatRequest> requestsSeen = new ArrayList<>();
+
+        ScriptedChatProvider(ProviderCapabilities capabilities, String... responses) {
+            this.capabilities = capabilities;
+            this.responses = new ArrayDeque<>(List.of(responses));
+        }
+
+        List<ChatRequest> requestsSeen() {
+            return requestsSeen;
+        }
+
+        @Override
+        public ChatResponse complete(ChatRequest request) {
+            throw new UnsupportedOperationException("not exercised by this test");
+        }
+
+        @Override
+        public Flux<ChatChunk> stream(ChatRequest request) {
+            requestsSeen.add(request);
+            String content = responses.poll();
+            if (content == null) {
+                throw new IllegalStateException("No more scripted responses for request: " + request);
+            }
+            ChatResponse aggregate =
+                    new ChatResponse(content, "test-model", new TokenUsage(1, 1), Duration.ZERO, BigDecimal.ZERO);
+            return Flux.just(ChatChunk.delta(content), ChatChunk.last(aggregate));
+        }
+
+        @Override
+        public ProviderCapabilities capabilities() {
+            return capabilities;
+        }
+    }
+}

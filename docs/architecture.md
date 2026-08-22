@@ -82,11 +82,11 @@ Modulith and ArchUnit fail the build on a violation.
 |---|---|---|
 | `shared` | Typed ids, domain errors, event envelope | — |
 | `ai-provider` | `ChatProvider`, `EmbeddingProvider`, token/cost accounting, resilience | `shared` |
-| `conversation` | Conversations, messages, streaming, context window management | `shared`, `ai-provider` |
+| `conversation` | Conversations, messages, streaming, context window management | `shared`, `ai-provider`, `tools` |
 | `ingestion` | Document lifecycle, jobs, Kafka producers and consumers | `shared`, `ai-provider`, `knowledge` |
 | `knowledge` | Chunks, embeddings, hybrid search, reranking | `shared`, `ai-provider` |
-| `rag` | Configurable pipeline, context building, citation extraction | `shared`, `ai-provider`, `knowledge` |
-| `tools` | Registry, schemas, authorization, sandboxed execution | `shared` |
+| `rag` | Configurable pipeline, context building, citation extraction | `shared`, `ai-provider`, `knowledge`, `tools` |
+| `tools` | Registry, schemas, authorization, sandboxed execution, tool-calling orchestration | `shared`, `ai-provider` |
 | `workflow` | State machine, run persistence, compensation | `shared`, `ai-provider`, `rag`, `tools` |
 | `mcp` | MCP server exposing tools; MCP client for external servers | `shared`, `tools` |
 | `evaluation` | Datasets, run execution, metrics, reports | `shared`, `rag`, `conversation`, `knowledge`, `ingestion` |
@@ -106,6 +106,11 @@ golden-dataset case's `gold_chunk_refs` (`"title#ordinal"`, stable across a fres
 unlike a chunk's random `UUID` primary key) against real ingested content is evaluation's own
 concern, requiring it to query `ingestion.Document` (by title) and `knowledge.Chunk` (by ordinal)
 directly — the same kind of documented boundary correction Phase 3 made for `knowledge`/`rag`.
+`tools → ai-provider` and `conversation`/`rag → tools` were added during Phase 5 implementation for
+the same reason: two already-accepted documents (ADR-0004, §8 below) had already assumed `tools`
+depends on `ProviderCapabilities` for its structured-output fallback, a real contradiction with this
+table that ADR-0009 resolves rather than papers over; `conversation` and `rag` both need to invoke
+`tools.ToolCallingChatService` from their respective chat paths.
 
 ---
 
@@ -129,7 +134,8 @@ second copy.
 
 **Tools**
 
-- `ToolDefinition` — name, version, input/output JSON Schema, required scopes
+- `ToolDefinition` — name, version, input/output JSON Schema, required scopes, whether the tool
+  introduces retrieved (untrusted) content into the conversation (Phase 5, ADR-0009)
 - `ToolInvocation` — tool, arguments, result, duration, outcome (`ok` / `timeout` / `denied` / `error`)
 
 **Workflow**
@@ -168,10 +174,15 @@ GET    /api/v1/rag/profiles
 
 GET    /api/v1/tools
 POST   /api/v1/tools/{name}:invoke
+POST   /api/v1/tool-calls/{callId}:confirm      # resolves a pending confirmation, docs/threat-model.md T2
 
 POST   /api/v1/workflows/{type}/runs            # 202 + Location: run
 GET    /api/v1/workflows/runs/{id}
 ```
+
+`POST /api/v1/tool-calls/{callId}:confirm` wasn't planned here originally — added during Phase 5
+implementation once T2's confirmation control (already named in the threat model) was actually
+designed down to an endpoint. See ADR-0009.
 
 Evaluation runs are **not** exposed over this API. A REST pair (`POST /api/v1/evaluations/runs`,
 `GET .../{id}`) was the original plan here, but Phase 4 implementation chose a CLI instead: an eval
@@ -187,7 +198,11 @@ from each retriever, scores before and after fusion and reranking, and the chunk
 the context. It is the difference between having built a RAG pipeline and being able to explain what
 it did.
 
-**Chat SSE event types:** `token`, `citation`, `tool_call`, `tool_result`, `usage`, `done`, `error`.
+**Chat SSE event types:** `token`, `citation`, `tool_call`, `tool_call_pending`, `tool_result`,
+`usage`, `done`, `error`. `tool_call`/`tool_result` had no producer until Phase 5;
+`tool_call_pending` is new in Phase 5, not part of this list's original scope — emitted only for a
+tool call whose turn's context contains retrieved content (docs/threat-model.md T2), pausing the
+stream until `POST /api/v1/tool-calls/{callId}:confirm` resolves it.
 
 Streaming citations as discrete events rather than embedding markers in the token stream means the
 client never has to parse the answer to render sources, and a truncated stream still leaves the
@@ -356,6 +371,9 @@ supports native tool calling, structured output, and what its context limit is. 
 queries it and falls back to constrained structured output with schema-validated parsing when native
 tool calling is unavailable or unreliable — which, with small local models, it frequently is. Without
 that, the abstraction would leak the moment the model changed. [ADR-0004](adr/0004-ai-provider-abstraction.md).
+Built in Phase 5 as `tools.ToolCallingChatService`; both real adapters (`lmstudio`, `recorded`)
+report `supportsNativeToolCalling() == false` today, so this always exercises the fallback path in
+practice — see [ADR-0009](adr/0009-tool-design-and-security-boundaries.md).
 
 ---
 
@@ -557,15 +575,20 @@ Detail lives in [`threat-model.md`](threat-model.md). The structural points:
 **Authentication.** Spring Security with a static API key in the local profile or a signed JWT.
 Single user with roles. Everything authenticated except health endpoints and the UI shell.
 
-**Tool authorization.** Each tool declares required scopes, checked against the principal *before*
-invocation. A model requesting an unauthorized tool receives a structured denial it can explain to
-the user — not a silent failure, and not an exception that surfaces as a generic error.
+**Tool authorization.** Each tool declares required scopes, checked *before* invocation. A model
+requesting an unauthorized tool receives a structured denial it can explain to the user — not a
+silent failure, and not an exception that surfaces as a generic error. Built in Phase 5
+(`tools.internal.ScopeAuthorizer`) against a config-declared `ai.tools.granted-scopes` list, not yet
+a real per-request principal — no Spring Security exists in this codebase yet, matching the
+single-user, no-multi-tenancy stance; see [ADR-0009](adr/0009-tool-design-and-security-boundaries.md).
 
 **Trust boundaries.** Three, and they are the ones that matter for an LLM system:
 
 1. User input → the application. Standard validation.
 2. **Retrieved document content → the prompt.** Untrusted. Delimited, never in the instruction
-   region, never authorised to trigger tools.
+   region. A tool call the model makes after retrieved content entered its context is not blocked
+   outright, but requires explicit user confirmation before it executes — the structural control
+   for this boundary (docs/threat-model.md T2, ADR-0009), not a flat prohibition.
 3. **Model output → tool execution.** Untrusted. Schema-validated, scope-checked, timeout-bounded.
 
 Treating the model's output as untrusted input to the tool layer is the single most important

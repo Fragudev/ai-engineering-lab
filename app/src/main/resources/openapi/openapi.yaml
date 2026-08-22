@@ -90,15 +90,24 @@ paths:
             An SSE stream. Event types: `token` (data: a content delta — citation markers are never
             present here, see the `citation` event below), `citation` (data: a Citation JSON object;
             only emitted when the turn was retrieval-augmented, once per source the model actually
-            cited, sent after the last `token` and before `usage`), `usage` (data: a UsageSummary
+            cited, sent after the last `token` and before `usage`), `tool_call` (data: a
+            {callId, toolName, arguments} JSON object — the model's intent to call a tool, emitted
+            in both plain chat and retrieval-augmented turns as of Phase 5), `tool_call_pending`
+            (data: a {callId, toolName, arguments, confirmationTimeoutSeconds} JSON object — only
+            emitted for a tool call whose turn's context contains retrieved content
+            (docs/threat-model.md T2); the stream then pauses until
+            `POST /api/v1/tool-calls/{callId}:confirm` resolves it or the confirmation timeout
+            elapses, at which point the paused stream resumes on whichever request thread called the
+            confirm endpoint), `tool_result` (data: a {callId, toolName, outcome, result, message}
+            JSON object — outcome is one of OK/TIMEOUT/DENIED/ERROR), `usage` (data: a UsageSummary
             JSON object, sent once as the final event before `done`), `done` (stream finished
             normally), `error` (data: a ProblemDetail JSON object, e.g. status 504 on a provider
             timeout; the stream then closes). A mid-stream failure cannot become a real HTTP error
             status — the response is already a committed 200 SSE stream by the time a provider call
             can fail — so it surfaces in-band via the `error` event instead; that is what "a typed
-            error, not a hung request" means for this endpoint specifically. tool_call/tool_result
-            event types are part of the full contract (docs/architecture.md #5) but have no
-            producer until Phase 5.
+            error, not a hung request" means for this endpoint specifically. `tool_call_pending` is
+            new in Phase 5 — not part of architecture.md #5's original event list, added once the
+            confirmation flow that document names was actually designed down to an endpoint.
           content:
             text/event-stream:
               schema:
@@ -253,6 +262,86 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/RagProfile"
+
+  /api/v1/tools:
+    get:
+      operationId: listTools
+      summary: >
+        The registered tool set (docs/architecture.md #4, Phase 5): calculator, mock-weather (the
+        roadmap's "mock external API"), and knowledge-base-search.
+      responses:
+        "200":
+          description: Available tools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ToolDefinition"
+
+  /api/v1/tools/{name}:invoke:
+    post:
+      operationId: invokeTool
+      summary: >
+        Invoke a tool directly, outside a chat turn — schema-validated, scope-checked and
+        timeout-bounded, the same pipeline the chat tool-calling loop uses
+        (docs/adr/0009-tool-design-and-security-boundaries.md).
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolInvokeRequest"
+      responses:
+        "200":
+          description: The tool's result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolInvokeResponse"
+        "400":
+          description: Invalid arguments — did not pass the tool's own JSON Schema.
+          $ref: "#/components/responses/ProblemDetail"
+        "403":
+          description: Denied by scope check, before execution.
+          $ref: "#/components/responses/ProblemDetail"
+        "404":
+          $ref: "#/components/responses/ProblemDetail"
+        "504":
+          description: The tool did not complete within its configured timeout.
+          $ref: "#/components/responses/ProblemDetail"
+
+  /api/v1/tool-calls/{callId}:confirm:
+    post:
+      operationId: confirmToolCall
+      summary: >
+        Resolves a pending tool-call confirmation raised mid-stream by a RAG-context turn
+        (docs/threat-model.md T2). Not part of architecture.md #5's original path list — added in
+        Phase 5 once the confirmation flow it names was actually designed down to an endpoint.
+      parameters:
+        - name: callId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolConfirmRequest"
+      responses:
+        "200":
+          description: Resolved — the paused SSE stream resumes.
+        "404":
+          description: Unknown, already-resolved, or expired callId.
+          $ref: "#/components/responses/ProblemDetail"
 
 components:
   parameters:
@@ -520,6 +609,53 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    ToolDefinition:
+      type: object
+      required: [name, version, description, inputSchemaJson, requiredScopes, timeoutSeconds]
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        inputSchemaJson:
+          type: string
+          description: A JSON Schema (draft 2020-12) document, as a string.
+        requiredScopes:
+          type: array
+          items:
+            type: string
+        timeoutSeconds:
+          type: integer
+
+    ToolInvokeRequest:
+      type: object
+      properties:
+        arguments:
+          type: object
+          additionalProperties: true
+
+    ToolInvokeResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        result:
+          nullable: true
+          description: The tool's result, shape defined by its own output schema.
+        errorMessage:
+          type: string
+          nullable: true
+
+    ToolConfirmRequest:
+      type: object
+      required: [approved]
+      properties:
+        approved:
+          type: boolean
 
     ProblemDetail:
       type: object

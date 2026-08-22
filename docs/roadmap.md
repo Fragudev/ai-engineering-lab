@@ -13,8 +13,8 @@ than a step toward some distant completion.
 | [1](#phase-1--chat-vertical-slice) | Chat vertical slice | Complete |
 | [2](#phase-2--asynchronous-ingestion) | Asynchronous ingestion | Complete |
 | [3](#phase-3--rag) | RAG | Complete |
-| [4](#phase-4--evaluation) | Evaluation | Not started |
-| [5](#phase-5--tools) | Tools | Not started |
+| [4](#phase-4--evaluation) | Evaluation | Complete |
+| [5](#phase-5--tools) | Tools | Complete |
 | [6](#phase-6--agentic-workflow) | Agentic workflow | Not started |
 | [7](#phase-7--mcp) | MCP | Not started |
 | [8](#phase-8--hardening-and-presentation) | Hardening and presentation | Not started |
@@ -346,16 +346,69 @@ environment variables, not code changes, and both are widely-documented Rancher 
 
 Tool registry, JSON Schema validation, scope-based authorization, timeouts, and tool calling in chat
 with a fallback path for models lacking native support. Initial tools: calculator, knowledge base
-search, and a mock external API.
+search, and a mock external API. Also builds the full interactive tool-call confirmation flow
+docs/threat-model.md's T2 names as "the structural control" — a real user choice made during
+planning to build the complete pause/approve/resume mechanism rather than a lighter stand-in, and to
+cover both the plain-chat and RAG-chat paths rather than RAG-only.
 
-**ADR:** 0009 tool design and security boundaries.
+**ADR:** [0009](adr/0009-tool-design-and-security-boundaries.md) tool design and security
+boundaries — resolves a real contradiction between `docs/architecture.md` §3's dependency table and
+ADR-0004/§8's own text (both already assumed `tools` depends on `ai-provider`, which §3 didn't
+grant), documents the confirmation-gate's latching design, and the module-composition pattern for
+`KnowledgeBaseSearchTool`.
 
 **Acceptance**
 
-- A tool call with invalid arguments is rejected with a structured error the model can act on.
-- An unauthorized tool request is denied by scope check before execution.
-- A tool exceeding its timeout is cancelled and reported, without hanging the conversation.
-- Tool calling works on a model without native support, via the structured-output fallback.
+- [x] A tool call with invalid arguments is rejected with a structured error the model can act on.
+      Verified live and in `SchemaValidatorTest`/`ToolInvokeIntegrationTest`; in the chat loop, the
+      structured error is fed back as a `TOOL`-role message and the model gets a real chance to
+      retry (`ToolCallingChatServiceTest.invalidArgumentsAreFedBackAndTheModelRetries`).
+- [x] An unauthorized tool request is denied by scope check before execution. Verified live
+      (`GET /api/v1/tools/knowledge-base-search:invoke` → 403 with `knowledge-base:search` excluded
+      from `ai.tools.granted-scopes`) and in the chat loop
+      (`ToolCallingChatServiceTest.scopeDeniedShortCircuitsWithoutExecutingTheTool` — asserts the
+      tool's own `execute()` is never called).
+- [x] A tool exceeding its timeout is cancelled and reported, without hanging the conversation.
+      Verified live (504 via a test-only slow tool) and in the chat loop
+      (`ToolCallingChatServiceTest.timeoutIsReportedWithoutHangingTheStream` — a tool that sleeps 2s
+      against a 50ms timeout still completes the test in well under 2s).
+- [x] Tool calling works on a model without native support, via the structured-output fallback.
+      This is the only path either real adapter (`recorded`, `lmstudio`) can exercise — both report
+      `supportsNativeToolCalling() == false` — so every one of the above *is* the fallback path,
+      proven end to end live (`curl` against a real running app: `what is 12 times 7` → real
+      `tool_call`/`tool_result` SSE events → a real calculator evaluation of `12 * 7` → the fixture
+      follow-up `"12 times 7 is 84."`) and via `ToolCallingInPlainChatIntegrationTest`.
+- [x] (Not a stated roadmap criterion, but the reason this phase took the shape it did) The
+      confirmation gate: a RAG-context turn's tool call pauses the SSE stream with a
+      `tool_call_pending` event; `POST /api/v1/tool-calls/{callId}:confirm` resumes the *same*
+      stream. Proven by the flagship `ConversationToolConfirmationIntegrationTest` — a raw
+      `HttpClient` reads the SSE response on a background thread while the main thread posts the
+      confirmation concurrently — covering both outcomes: confirmed (resumes, completes normally)
+      and never confirmed (resolves to a real `TIMEOUT` outcome, still reaches `done`, never hangs).
+
+Two real bugs surfaced only by running the confirmation flow live against a real Postgres/Testcontainers
+stack, not by code review or the pure-unit-test suite (which used simpler synchronous stand-ins that
+didn't exercise the actual thread-hopping): (1) `ToolInvoker`'s first implementation called `.block()`
+on a `Mono` from inside `ToolCallingChatService`'s reactive chain — safe-looking in isolation, but
+that chain runs on the same Reactor `parallel` scheduler the model's own streamed response flows
+through, where Reactor's own blocking-call guard rejects a synchronous `block()` outright. Fixed by
+making `ToolInvoker.invokeForChat` return `Mono<ToolCallResult>` and never block; `invokeOrThrow` (the
+direct REST path, a plain servlet-thread MVC controller method, genuinely safe to block) still calls
+`.block()` at its own boundary. (2) `PendingConfirmationRegistry.await`'s first version used Reactor's
+timeout-with-fallback-value overload (`.timeout(timeout, Mono.just(false))`), which made "the user
+explicitly rejected this call" and "nobody answered before the deadline" collapse into the same
+`false` signal — an unconfirmed call was reported as `DENIED` instead of `TIMEOUT`. Fixed by letting
+the timeout propagate as a real error instead, which `ToolCallingChatService`'s existing
+`.onErrorReturn(TIMEOUT)` branch was already written to catch (dead code until this fix landed).
+
+Scope reductions, named rather than silently dropped (see ADR-0009's Trade-offs section for the
+reasoning behind each): native tool-calling is designed for but not exercised (no adapter can
+produce `supportsNativeToolCalling() == true`); confirmation state is not resumable across an app
+restart (Phase 6/`workflow`'s job); the tool-calling loop is bounded (`max-calls-per-turn`, default
+3), not a general agentic loop; the mock external API performs no real network egress, so T4 (SSRF)
+mitigations are deferred until a real external-API tool exists; `granted-scopes` is one global
+config list, since no real principal exists yet; the peek-based tool-call sniffer can misdetect a
+legitimate answer that happens to start with `{`.
 
 ---
 

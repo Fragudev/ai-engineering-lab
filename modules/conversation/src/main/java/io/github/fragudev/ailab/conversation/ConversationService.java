@@ -1,9 +1,7 @@
 package io.github.fragudev.ailab.conversation;
 
-import io.github.fragudev.ailab.aiprovider.ChatChunk;
 import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
-import io.github.fragudev.ailab.aiprovider.ChatRequest;
 import io.github.fragudev.ailab.aiprovider.ChatResponse;
 import io.github.fragudev.ailab.conversation.internal.CitationRepository;
 import io.github.fragudev.ailab.conversation.internal.ConversationRepository;
@@ -11,6 +9,11 @@ import io.github.fragudev.ailab.conversation.internal.MessageRepository;
 import io.github.fragudev.ailab.shared.CitationId;
 import io.github.fragudev.ailab.shared.ConversationId;
 import io.github.fragudev.ailab.shared.MessageId;
+import io.github.fragudev.ailab.tools.ToolCallOrigin;
+import io.github.fragudev.ailab.tools.ToolCallingChatService;
+import io.github.fragudev.ailab.tools.ToolChatChunk;
+import io.github.fragudev.ailab.tools.ToolInvoker;
+import io.github.fragudev.ailab.tools.ToolRegistry;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -34,16 +37,25 @@ public class ConversationService {
     private final MessageRepository messageRepository;
     private final CitationRepository citationRepository;
     private final ChatProvider chatProvider;
+    private final ToolCallingChatService toolCallingChatService;
+    private final ToolRegistry toolRegistry;
+    private final ToolInvoker toolInvoker;
 
     public ConversationService(
             ConversationRepository conversationRepository,
             MessageRepository messageRepository,
             CitationRepository citationRepository,
-            ChatProvider chatProvider) {
+            ChatProvider chatProvider,
+            ToolCallingChatService toolCallingChatService,
+            ToolRegistry toolRegistry,
+            ToolInvoker toolInvoker) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.citationRepository = citationRepository;
         this.chatProvider = chatProvider;
+        this.toolCallingChatService = toolCallingChatService;
+        this.toolRegistry = toolRegistry;
+        this.toolInvoker = toolInvoker;
     }
 
     public Conversation createConversation() {
@@ -109,11 +121,15 @@ public class ConversationService {
     }
 
     /**
-     * Appends the user message, streams the assistant's reply, and persists it once complete.
-     * Errors from the provider (timeout, unavailable) propagate as-is on the returned {@link Flux}
-     * for the caller to translate at the API edge.
+     * Appends the user message, streams the assistant's reply — through
+     * {@link ToolCallingChatService} rather than {@link ChatProvider} directly, so plain chat gets
+     * tool calling too (Phase 5, ADR-0009) — and persists it once complete. Any tool calls made
+     * during the turn are persisted via {@link ToolInvoker#recordForMessage} right after, once the
+     * owning assistant message exists (mirrors how RAG citations are linked in {@code app}). Errors
+     * from the provider (timeout, unavailable) propagate as-is on the returned {@link Flux} for the
+     * caller to translate at the API edge.
      */
-    public Flux<ChatChunk> sendMessage(ConversationId conversationId, String userContent) {
+    public Flux<ToolChatChunk> sendMessage(ConversationId conversationId, String userContent) {
         Conversation conversation = getConversation(conversationId);
         messageRepository.save(Message.userMessage(conversation.id(), userContent));
 
@@ -125,22 +141,29 @@ public class ConversationService {
                         .map(message -> new ChatMessage(message.role(), message.content()))
                         .toList();
 
-        return chatProvider.stream(new ChatRequest(history)).doOnNext(chunk -> {
-            if (chunk.last()) {
-                persistAssistantReply(conversation.id(), chunk.aggregate());
-            }
-        });
+        return toolCallingChatService.stream(
+                        chatProvider, history, toolRegistry.definitions(), ToolCallOrigin.PLAIN_CHAT, conversationId)
+                .doOnNext(chunk -> {
+                    if (chunk.last()) {
+                        Message assistantMessage = persistAssistantReply(conversation.id(), chunk.aggregate());
+                        if (assistantMessage != null) {
+                            chunk.toolInvocations()
+                                    .forEach(result -> toolInvoker.recordForMessage(assistantMessage.id(), result));
+                        }
+                    }
+                });
     }
 
-    private void persistAssistantReply(ConversationId conversationId, ChatResponse aggregate) {
-        Optional.ofNullable(aggregate)
-                .ifPresent(response -> messageRepository.save(Message.assistantMessage(
+    private @Nullable Message persistAssistantReply(ConversationId conversationId, @Nullable ChatResponse aggregate) {
+        return Optional.ofNullable(aggregate)
+                .map(response -> messageRepository.save(Message.assistantMessage(
                         conversationId,
                         response.content(),
                         response.model(),
                         response.usage().promptTokens(),
                         response.usage().completionTokens(),
                         response.latency().toMillis(),
-                        response.estimatedCostUsd())));
+                        response.estimatedCostUsd())))
+                .orElse(null);
     }
 }

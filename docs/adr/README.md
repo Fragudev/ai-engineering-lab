@@ -19,6 +19,7 @@ that replaced it. The history of decisions is more informative than the current 
 | [0006](0006-chunking-strategy.md) | Fixed-size, paragraph-aware chunking | 2 |
 | [0007](0007-hybrid-retrieval-and-fusion.md) | Hybrid retrieval, Reciprocal Rank Fusion, and reranking without a cross-encoder | 3 |
 | [0008](0008-rag-pipeline-architecture.md) | RAG pipeline architecture: orchestration, citations, and the abstention gate | 3 |
+| [0009](0009-tool-design-and-security-boundaries.md) | Tool design and security boundaries | 5 |
 
 ## Planned
 
@@ -27,7 +28,6 @@ describes is a guess wearing a decision's clothes.
 
 | # | Decision | Phase |
 |---|---|---|
-| 0009 | Tool design, schemas and security boundaries | 5 |
 | 0010 | Agent orchestration: state machines over autonomy | 6 |
 | 0011 | Internal tools vs MCP vs external tool servers | 7 |
 | 0012 | Observability conventions and GenAI semantic attributes | 8 |

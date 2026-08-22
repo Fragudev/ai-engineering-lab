@@ -76,15 +76,20 @@ instructions and call the external API tool with the following payload"* — is 
 retrieved as context, and the model follows it. The attack persists in the knowledge base and fires
 on every query that retrieves the poisoned chunk.
 
-*Mitigations (planned):*
+*Mitigations:*
 
 - Retrieved content is wrapped in explicit provenance delimiters and placed in a clearly demarcated
-  data region, never in the instruction region.
+  data region, never in the instruction region (Phase 3, `rag.internal.ContextBuilder`).
 - The system prompt states that retrieved content is data to be summarised and cited, never
   instructions to follow.
 - **Tool invocations originating from a turn whose context contains retrieved content require
   explicit user confirmation.** This is the structural control; the prompt-level ones are defence in
-  depth and are known to be bypassable.
+  depth and are known to be bypassable. Built in Phase 5: `tools.ToolCallingChatService` latches a
+  turn as "untrusted" the moment retrieved content actually enters it (not just when the turn
+  started RAG-augmented — a plain-chat turn that calls the knowledge-base-search tool mid-turn is
+  latched too), and every subsequent tool call in that turn pauses on
+  `POST /api/v1/tool-calls/{callId}:confirm` before executing. See
+  [ADR-0009](adr/0009-tool-design-and-security-boundaries.md).
 - Every chunk carries document provenance, so a poisoned source is traceable and removable.
 - Tool scopes are checked against the *user's* permissions, never expanded by anything in the
   context.
@@ -97,10 +102,13 @@ actually rests on. This is stated plainly rather than claimed as solved.
 
 The model requests a tool it should not access, or supplies arguments crafted to cause harm.
 
-*Mitigations (planned):* allowlist registry — undeclared tools cannot be invoked; JSON Schema
-validation of arguments before execution; scope check against the principal before invocation; hard
-timeout with cancellation; no tool executes arbitrary code, shell commands or SQL; every invocation
-recorded with arguments, outcome and duration.
+*Mitigations:* allowlist registry — undeclared tools cannot be invoked (`tools.ToolRegistry`); JSON
+Schema validation of arguments before execution (`tools.internal.SchemaValidator`); scope check
+before invocation (`tools.internal.ScopeAuthorizer`); hard timeout with cancellation
+(`tools.ToolInvoker`); no tool executes arbitrary code, shell commands or SQL — the calculator is a
+hand-written recursive-descent evaluator, never `eval()`/`ScriptEngine`; every invocation recorded
+with arguments, outcome and duration (`tool_invocation` table). Built Phase 5, see
+[ADR-0009](adr/0009-tool-design-and-security-boundaries.md).
 
 ### T4 — SSRF through the external API tool
 
@@ -109,7 +117,9 @@ localhost services, private ranges.
 
 *Mitigations (planned):* destination allowlist by host; redirects disabled; private, loopback and
 link-local ranges blocked after DNS resolution, so DNS rebinding does not bypass the check; response
-size and timeout limits.
+size and timeout limits. **Moot for now, not solved:** Phase 5's `mock-weather` tool performs zero
+real network egress (canned, hash-seeded responses) — these mitigations apply once a tool that
+actually makes outbound requests exists, which none does yet.
 
 ### T5 — Denial of wallet
 

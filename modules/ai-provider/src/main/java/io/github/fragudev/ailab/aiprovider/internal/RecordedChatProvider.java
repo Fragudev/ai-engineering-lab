@@ -73,11 +73,37 @@ final class RecordedChatProvider implements ChatProvider {
                 .orElse("")
                 .toLowerCase(Locale.ROOT);
 
-        return fixtures.cases().stream()
+        FixtureCase matched = fixtures.cases().stream()
                 .filter(fixtureCase ->
                         lastUserMessage.contains(fixtureCase.matchContains().toLowerCase(Locale.ROOT)))
                 .findFirst()
                 .orElse(fixtures.defaultCase());
+
+        // A tool-calling loop's second call (after tools.ToolCallingChatService executes a tool)
+        // appends a TOOL-role result but no new USER message — matched-by-last-USER-message would
+        // otherwise return the SAME fixture (the original tool-call JSON) forever, looping instead
+        // of producing a follow-up answer.
+        boolean isToolCallFollowUp =
+                !request.messages().isEmpty() && lastMessage(request).role() == ChatRole.TOOL;
+        if (!isToolCallFollowUp) {
+            return matched;
+        }
+        FixtureSet.FollowUp followUp = matched.followUp();
+        if (followUp == null) {
+            throw new IllegalStateException(
+                    "Fixture matching '%s' was reached inside a tool-call loop but declares no followUp response"
+                            .formatted(matched.matchContains()));
+        }
+        return new FixtureCase(
+                matched.matchContains(),
+                followUp.response(),
+                followUp.promptTokens(),
+                followUp.completionTokens(),
+                null);
+    }
+
+    private static ChatMessage lastMessage(ChatRequest request) {
+        return request.messages().get(request.messages().size() - 1);
     }
 
     private static ChatResponse toChatResponse(FixtureCase fixture, Duration latency) {

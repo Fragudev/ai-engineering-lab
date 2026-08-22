@@ -38,6 +38,18 @@ ai:
       chat-model: local-model
       embedding-model: bge-m3
       timeout: 60s
+  tools:
+    enabled: true
+    # Stands in for "the one authenticated user's permissions" — no real principal exists yet
+    # (docs/architecture.md #13's "design" framing for authentication; single-user, no
+    # multi-tenancy per AGENTS.md). See docs/adr/0009-tool-design-and-security-boundaries.md.
+    granted-scopes: [calculator:use, knowledge-base:search, external-api:mock]
+    default-timeout: 5s
+    # How long a RAG-sourced tool call waits for POST /api/v1/tool-calls/{callId}:confirm before
+    # resolving to TIMEOUT — distinct from a tool's own execution timeout above.
+    confirmation-timeout: 60s
+    # Bounds the tool-calling loop; not a general agentic loop (that's Phase 6/workflow's job).
+    max-calls-per-turn: 3
 
 server:
   port: 8080

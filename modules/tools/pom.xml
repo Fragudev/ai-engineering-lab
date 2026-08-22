@@ -22,6 +22,27 @@
       <groupId>io.github.fragudev.ailab</groupId>
       <artifactId>shared</artifactId>
     </dependency>
+    <!-- ADR-0004's own Consequences section already commits, in writing, to "the tools module
+         depends on ProviderCapabilities for its structured-output fallback" — docs/architecture.md
+         #3's table said `shared` only, which was a real, uncorrected contradiction until ADR-0009
+         (Phase 5) added this edge for real. -->
+    <dependency>
+      <groupId>io.github.fragudev.ailab</groupId>
+      <artifactId>ai-provider</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <!-- Version pinned explicitly (no BOM covers it) — verified against the project's real GitHub
+         releases during Phase 5 planning, not the Maven Central search index, which under-reports
+         and still surfaces an old 1.x line as "latest". The 3.x line targets Jackson 3, matching
+         Spring Boot 4.1's default HTTP message conversion. -->
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>3.0.6</version>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
