@@ -50,6 +50,17 @@ ai:
     confirmation-timeout: 60s
     # Bounds the tool-calling loop; not a general agentic loop (that's Phase 6/workflow's job).
     max-calls-per-turn: 3
+  workflow:
+    enabled: true
+    # Reasoned starting bounds, not measured against any dataset (AGENTS.md rule 2) — same honesty
+    # as ai.tools.max-calls-per-turn above. See docs/adr/0010-agent-orchestration.md.
+    max-sub-queries: 4
+    max-sources-to-extract: 8
+    # The real, enforced T5 (denial of wallet) bound docs/threat-model.md names as planned — scoped
+    # per engine invocation, not cumulative across a restart+resume.
+    max-llm-calls-per-run: 20
+    stage-retry-attempts: 2
+    step-timeout: 30s
 
 server:
   port: 8080

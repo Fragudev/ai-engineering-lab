@@ -87,7 +87,7 @@ Modulith and ArchUnit fail the build on a violation.
 | `knowledge` | Chunks, embeddings, hybrid search, reranking | `shared`, `ai-provider` |
 | `rag` | Configurable pipeline, context building, citation extraction | `shared`, `ai-provider`, `knowledge`, `tools` |
 | `tools` | Registry, schemas, authorization, sandboxed execution, tool-calling orchestration | `shared`, `ai-provider` |
-| `workflow` | State machine, run persistence, compensation | `shared`, `ai-provider`, `rag`, `tools` |
+| `workflow` | State machine, run persistence, compensation | `shared`, `ai-provider`, `knowledge`, `rag`, `tools` |
 | `mcp` | MCP server exposing tools; MCP client for external servers | `shared`, `tools` |
 | `evaluation` | Datasets, run execution, metrics, reports | `shared`, `rag`, `conversation`, `knowledge`, `ingestion` |
 | `platform` | OpenTelemetry, security, rate limiting, idempotency, Problem Details | `shared` |
@@ -110,7 +110,10 @@ directly — the same kind of documented boundary correction Phase 3 made for `k
 the same reason: two already-accepted documents (ADR-0004, §8 below) had already assumed `tools`
 depends on `ProviderCapabilities` for its structured-output fallback, a real contradiction with this
 table that ADR-0009 resolves rather than papers over; `conversation` and `rag` both need to invoke
-`tools.ToolCallingChatService` from their respective chat paths.
+`tools.ToolCallingChatService` from their respective chat paths. `workflow → knowledge` was added
+during Phase 6 implementation for the same category of reason: `rag.RagPipeline.search`'s own return
+type carries `knowledge.SearchResult`/`Chunk` directly, and the `retrieve` stage genuinely reads
+them — see docs/adr/0010-agent-orchestration.md.
 
 ---
 
@@ -140,8 +143,14 @@ second copy.
 
 **Workflow**
 
-- `WorkflowRun` — type, status, input, output, correlation id
-- `WorkflowStep` — run, step name, status, input, output, attempts, cost
+- `WorkflowRun` — type (`documentation-research`), status (`PENDING` / `RUNNING` / `SUCCEEDED` /
+  `FAILED` — no separate compensating state; every stage is read-only/computational, so compensating
+  a failed run *is* the transition into `FAILED`, see docs/adr/0010-agent-orchestration.md), input,
+  output, correlation id
+- `WorkflowStep` — run, step index, step name (`plan-sub-queries` / `retrieve` /
+  `extract-per-source` / `synthesise` / `self-check` / `answer`), status (`PENDING` / `RUNNING` /
+  `SUCCEEDED` / `FAILED`), input, output, attempts, cost. One row per stage, not per sub-task inside
+  a fan-out stage (e.g. `retrieve`'s per-sub-query results live inside that one row's output JSON).
 
 **Evaluation**
 
@@ -183,6 +192,11 @@ GET    /api/v1/workflows/runs/{id}
 `POST /api/v1/tool-calls/{callId}:confirm` wasn't planned here originally — added during Phase 5
 implementation once T2's confirmation control (already named in the threat model) was actually
 designed down to an endpoint. See ADR-0009.
+
+`GET /api/v1/workflows/runs/{id}` nests every stage's input, output, attempts and cost inline in the
+run's own response — no separate steps endpoint exists or is planned; nothing in Phase 6's
+acceptance criteria needs one. A run resumes automatically on application startup if it was left
+`PENDING` or `RUNNING` by an interrupted process — see ADR-0010.
 
 Evaluation runs are **not** exposed over this API. A REST pair (`POST /api/v1/evaluations/runs`,
 `GET .../{id}`) was the original plan here, but Phase 4 implementation chose a CLI instead: an eval

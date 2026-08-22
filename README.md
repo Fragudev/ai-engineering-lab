@@ -37,9 +37,9 @@ behind a set of architecture conversations.
 | Hybrid retrieval | Vector kNN + PostgreSQL full-text, fused with Reciprocal Rank Fusion | Done — Phase 3 |
 | RAG with citations | Configurable pipeline, per-claim source attribution, deterministic "insufficient context" abstention | Done — Phase 3 |
 | Retrieval debugging | An endpoint that shows what was retrieved, with scores before and after fusion and reranking | Done — Phase 3 |
-| Evaluation | Golden dataset, recall@k, MRR, citation precision, latency, token cost, profile comparison | Planned — Phase 4 |
-| Tool calling | Schema-validated registry with scoped authorization, timeouts and full tracing | Planned — Phase 5 |
-| Agentic workflow | An explicit state machine with persisted state, resumable and compensable | Planned — Phase 6 |
+| Evaluation | Golden dataset, recall@k, MRR, citation precision, latency, token cost, profile comparison | Done — Phase 4 |
+| Tool calling | Schema-validated registry with scoped authorization, timeouts and full tracing | Done — Phase 5 |
+| Agentic workflow | An explicit state machine with persisted state, resumable and compensable | Done — Phase 6 |
 | MCP | Tool registry exposed as an MCP server; external MCP servers consumed as clients | Planned — Phase 7 |
 
 ---
