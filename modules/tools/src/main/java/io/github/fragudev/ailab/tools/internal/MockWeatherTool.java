@@ -38,6 +38,7 @@ class MockWeatherTool implements Tool {
             "condition":{"type":"string"}},"required":["city","temperatureCelsius","condition"]}""",
             Set.of("external-api:mock"),
             false,
+            false,
             Duration.ofSeconds(5));
 
     @Override

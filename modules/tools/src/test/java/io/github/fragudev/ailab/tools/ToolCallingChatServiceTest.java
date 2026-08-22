@@ -92,7 +92,7 @@ class ToolCallingChatServiceTest {
             @Override
             public ToolDefinition definition() {
                 return new ToolDefinition(
-                        "slow-tool", "1", "never finishes", "{}", "{}", Set.of(), false, Duration.ofMillis(50));
+                        "slow-tool", "1", "never finishes", "{}", "{}", Set.of(), false, false, Duration.ofMillis(50));
             }
 
             @Override
@@ -126,7 +126,7 @@ class ToolCallingChatServiceTest {
         ToolDefinition definition = new ToolDefinition(
                 "needs-value", "1", "requires a value", """
                 {"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object",\
-                "properties":{"value":{"type":"string"}},"required":["value"]}""", "{}", Set.of(), false, Duration.ofSeconds(5));
+                "properties":{"value":{"type":"string"}},"required":["value"]}""", "{}", Set.of(), false, false, Duration.ofSeconds(5));
         Tool tool = new Tool() {
             @Override
             public ToolDefinition definition() {
@@ -235,7 +235,15 @@ class ToolCallingChatServiceTest {
     private static Tool fakeTool(
             String name, Set<String> requiredScopes, boolean introducesRetrievedContent, AtomicInteger executions) {
         ToolDefinition definition = new ToolDefinition(
-                name, "1", "test tool", "{}", "{}", requiredScopes, introducesRetrievedContent, Duration.ofSeconds(5));
+                name,
+                "1",
+                "test tool",
+                "{}",
+                "{}",
+                requiredScopes,
+                introducesRetrievedContent,
+                false,
+                Duration.ofSeconds(5));
         return new Tool() {
             @Override
             public ToolDefinition definition() {

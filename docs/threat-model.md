@@ -164,6 +164,30 @@ escaping.
 Content-Security-Policy; model output never passed to `eval`, a template engine, a shell or a SQL
 query; structured output validated against its schema before use.
 
+### T9 — Malicious or compromised external MCP server
+
+**New in Phase 7.** T3 covers the model misusing a tool *this application wrote* — the tool's own
+implementation is trusted, only the model-supplied arguments are not. An external MCP server
+inverts that: the tool's *implementation* is a remote process this application does not control, on
+top of whatever risk its arguments already carry. A malicious or compromised server could return a
+deceptive tool description to bias which tool the model picks, or a tool result crafted to look like
+instructions once it lands in the model's context (the same injection shape T2 covers for retrieved
+documents, from a different, network-reachable source). T4's SSRF mitigations were "moot for now,
+not solved" because no tool did real network egress — connecting to an external MCP server is the
+first real outbound network dependency this project has, ending that moot status for real.
+
+*Mitigations:* every MCP-client-discovered tool is registered under a prefixed name
+(`mcp:<server>:<tool>`, `mcp.internal.McpClientToolRegistrar`) so it's never confused with a
+built-in tool in `tool_invocation` rows, logs, or the UI; `ToolDefinition.alwaysRequiresConfirmation`
+is `true` for every one of them — gated on every single call, not just once a turn's context is
+otherwise untrusted, since simply invoking the tool (sending it arguments) is itself the risk here,
+true from the very first call; every call still goes through the exact same
+validate→authorize→timeout→execute→persist pipeline (`tools.ToolInvoker`) as any built-in tool —
+schema-validated arguments, scope-checked, hard-timeout-bounded, and recorded. This application's
+own MCP *server* only exposes tools it registered at its own startup — it never re-exposes a tool
+pulled in from an external MCP client, avoiding a "vouching for a third party's tool" trust chain.
+See [ADR-0011](adr/0011-mcp-tool-exposure-boundaries.md).
+
 ---
 
 ## 4. STRIDE on the conventional surface

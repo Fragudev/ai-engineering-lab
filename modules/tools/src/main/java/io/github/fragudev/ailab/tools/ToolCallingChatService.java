@@ -39,6 +39,13 @@ import tools.jackson.databind.ObjectMapper;
  * turn that started as {@link ToolCallOrigin#PLAIN_CHAT}: a plain-chat turn that calls
  * knowledge-base-search is correctly ungated for that first call (nothing untrusted yet), but every
  * call after it is gated, because the model's context now contains retrieved content.
+ *
+ * <p><b>MCP-client tools are gated unconditionally (docs/threat-model.md T9).</b> A tool whose
+ * {@link ToolDefinition#alwaysRequiresConfirmation()} is {@code true} is confirmed every time,
+ * regardless of the turn's origin or latching state — deliberately stricter than the rule above, since
+ * the risk there isn't "the model's context contains untrusted content" but "this call sends
+ * arguments to a third-party process this application doesn't control," which is true from its very
+ * first invocation.
  */
 @Service
 public class ToolCallingChatService {
@@ -100,7 +107,8 @@ public class ToolCallingChatService {
         Optional<ToolDefinition> definition = allTools.stream()
                 .filter(candidate -> candidate.name().equals(call.name()))
                 .findFirst();
-        boolean requiresConfirmation = state.untrusted && definition.isPresent();
+        boolean requiresConfirmation =
+                definition.isPresent() && (state.untrusted || definition.get().alwaysRequiresConfirmation());
         if (definition.isPresent() && definition.get().introducesRetrievedContent()) {
             state.untrusted = true;
         }

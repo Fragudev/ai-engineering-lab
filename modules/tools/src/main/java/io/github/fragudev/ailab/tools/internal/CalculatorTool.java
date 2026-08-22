@@ -34,6 +34,7 @@ class CalculatorTool implements Tool {
             "properties":{"result":{"type":"number"}},"required":["result"]}""",
             Set.of("calculator:use"),
             false,
+            false,
             Duration.ofSeconds(5));
 
     @Override

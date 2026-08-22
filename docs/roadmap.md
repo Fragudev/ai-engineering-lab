@@ -16,7 +16,7 @@ than a step toward some distant completion.
 | [4](#phase-4--evaluation) | Evaluation | Complete |
 | [5](#phase-5--tools) | Tools | Complete |
 | [6](#phase-6--agentic-workflow) | Agentic workflow | Complete |
-| [7](#phase-7--mcp) | MCP | Not started |
+| [7](#phase-7--mcp) | MCP | Complete |
 | [8](#phase-8--hardening-and-presentation) | Hardening and presentation | Not started |
 
 ---
@@ -474,13 +474,50 @@ declared dependency (matches architecture.md) that this one workflow doesn't exe
 
 The tool registry exposed as an MCP server; an external MCP server consumed as a client.
 
-**ADR:** 0011 internal tools vs MCP vs external tool servers, with the security boundary of each.
+**ADR:** [0011](adr/0011-mcp-tool-exposure-boundaries.md) internal tools vs MCP vs external tool
+servers, with the security boundary of each — including a real, scoped amendment to AGENTS.md's
+"Spring AI only inside `ai-provider`" locked decision (MCP protocol support isn't model-calling) and
+a new T9 threat (docs/threat-model.md) for a malicious or compromised external tool server.
 
 **Acceptance**
 
-- An external MCP client can discover and invoke the tools.
-- An external MCP server's tools are usable in chat, subject to the same authorization and timeouts.
-- The ADR is explicit about the trust implications of a third-party tool server.
+- [x] An external MCP client can discover and invoke the tools. Verified live against a real
+      `docker compose` deployment: a raw `curl` (a genuine external client, not this app's own MCP
+      client) did the full JSON-RPC handshake against `POST /mcp` — `initialize` → `notifications/initialized`
+      → `tools/list` (returned all 3 built-in tools with real JSON Schemas) → `tools/call` on
+      `calculator` with `{"expression":"15 * 3"}`, got back `{"result":45.0}`. Also covered by
+      `McpServerAndClientIntegrationTest` under Testcontainers.
+- [x] An external MCP server's tools are usable in chat, subject to the same authorization and
+      timeouts. Verified live: this app's own MCP client (pointed at its own `/mcp` endpoint — no
+      independent third-party MCP server exists in this project's infrastructure, named honestly in
+      ADR-0011) discovered and registered `mcp:self:{knowledge-base-search,calculator,mock-weather}`
+      into the same `ToolRegistry`; `GET /api/v1/tools` listed all 6 tools (3 built-in + 3
+      MCP-sourced); a real chat turn asking to use `mcp:self:calculator` produced `event:tool_call` →
+      `event:tool_call_pending` → (confirmed via `POST /api/v1/tool-calls/{callId}:confirm`) →
+      `event:tool_result` with the correct computation (`6 × 7 = 42`) → a streamed answer → `done`.
+      `tool_call_pending` fired on the very *first* call of a fresh plain-chat turn — proving
+      `ToolDefinition.alwaysRequiresConfirmation`, the opposite of knowledge-base-search's
+      ungated-first-call default (docs/threat-model.md T9).
+- [x] The ADR is explicit about the trust implications of a third-party tool server — ADR-0011's
+      Decision and the new threat-model.md T9 entry.
+
+One real bug surfaced only by wiring `ToolRegistry` for runtime registration and testing it live, not
+by planning: the original `McpClientToolRegistrar` design injected `Map<String, McpSyncClient>`,
+expecting Spring to key each configured MCP connection by name — it silently resolved to an empty
+map (Spring AI's autoconfiguration wires every connection into one `List<McpSyncClient>` bean, not
+individually-named beans), so the registrar's loop body never ran and nothing was logged. Found via
+Spring Boot's own condition-evaluation report (`debug=true`) after a first live-connect test simply
+timed out with no diagnostic. Fixed by injecting `List<McpSyncClient>` and deriving each connection's
+identity from the server's own advertised name (`McpSyncClient.getServerInfo().name()`, only
+available after `.initialize()`) instead of a Spring config key.
+
+Scope reductions, named rather than silently dropped (see ADR-0011's Trade-offs section for the
+reasoning behind each): no independent third-party MCP server exists in this project's
+infrastructure, so the client is demonstrated and tested against this same application's own server;
+the MCP server only exposes tools registered at its own startup, never re-exposing anything later
+pulled in via its own MCP client; no dynamic re-discovery if an external server becomes unavailable
+after registration; `ai.mcp.client.required-scope` is one config-declared scope for every external
+connection, matching `ai.tools.granted-scopes`'s existing single-user stance.
 
 ---
 

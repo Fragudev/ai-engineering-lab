@@ -27,6 +27,33 @@ spring:
       observation-enabled: true
     listener:
       observation-enabled: true
+  ai:
+    mcp:
+      server:
+        name: ai-engineering-lab
+        type: sync
+        protocol: streamable
+        # Only exposes this application's own tool registry (calculator/mock-weather/
+        # knowledge-base-search) — deliberately not tools later pulled in via the MCP client, see
+        # docs/adr/0011-mcp-tool-exposure-boundaries.md. This is already the framework's own default,
+        # named here explicitly rather than relied on silently.
+        expose-mcp-client-tools: false
+      client:
+        # No real external MCP server exists in this project's infrastructure to point at by
+        # default (docs/adr/0011-mcp-tool-exposure-boundaries.md). Override
+        # spring.ai.mcp.client.enabled and .streamable-http.connections.* to point at a real MCP
+        # server — docs/roadmap.md Phase 7's live verification does this against this same
+        # application's own /mcp endpoint.
+        enabled: false
+        # mcp.internal.McpClientToolRegistrar (an ApplicationReadyEvent listener), not Spring AI's
+        # own autoconfiguration, drives the handshake — calling it eagerly at bean-construction time
+        # would race the embedded server not yet accepting connections in the self-connect case.
+        initialized: false
+        toolcallback:
+          # Not used: mcp.internal.McpClientTool adapts a discovered tool into this project's own
+          # Tool SPI directly, not through Spring AI's ToolCallback/ChatClient bridging — that
+          # bridging would bypass ToolInvoker's scope/schema/timeout pipeline entirely.
+          enabled: false
 
 ai:
   provider:
@@ -43,7 +70,7 @@ ai:
     # Stands in for "the one authenticated user's permissions" — no real principal exists yet
     # (docs/architecture.md #13's "design" framing for authentication; single-user, no
     # multi-tenancy per AGENTS.md). See docs/adr/0009-tool-design-and-security-boundaries.md.
-    granted-scopes: [calculator:use, knowledge-base:search, external-api:mock]
+    granted-scopes: [calculator:use, knowledge-base:search, external-api:mock, mcp:external]
     default-timeout: 5s
     # How long a RAG-sourced tool call waits for POST /api/v1/tool-calls/{callId}:confirm before
     # resolving to TIMEOUT — distinct from a tool's own execution timeout above.
@@ -61,6 +88,14 @@ ai:
     max-llm-calls-per-run: 20
     stage-retry-attempts: 2
     step-timeout: 30s
+  mcp:
+    client:
+      # Stands in for "the one authenticated user's permissions" for every externally-sourced tool,
+      # the same single-config-list convention as ai.tools.granted-scopes — granted by default here
+      # since ToolDefinition.alwaysRequiresConfirmation (not the scope check) is the primary control
+      # for an MCP-client tool (docs/threat-model.md T9).
+      required-scope: mcp:external
+      default-timeout: 10s
 
 server:
   port: 8080
