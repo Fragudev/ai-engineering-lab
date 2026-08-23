@@ -545,7 +545,10 @@ independently converged on.
 - [x] A CycloneDX SBOM is published with releases. New `.github/workflows/release.yml`
       (`on: push: tags: v*`, plus `workflow_dispatch` for a dry run) generates an aggregate SBOM via
       `cyclonedx-maven-plugin:2.9.2:makeAggregateBom` and attaches `bom.json`/`bom.xml` to the GitHub
-      Release via `gh release upload`. No container registry push — scoped out, matching the
+      Release via `gh release upload`. The SBOM-generation step is verified for real (see the scope
+      note below); the workflow's full run, including the release-creation/upload step, is not yet —
+      a real GitHub platform constraint, not a shortcut, explained below. No container registry push
+      — scoped out, matching the
       roadmap's own "deliberately deferred" stance on infrastructure the project doesn't need to
       demonstrate configuration for.
 - [ ] Latency figures in the documentation come from a reproducible measurement, with hardware
@@ -605,6 +608,39 @@ planning:**
    try. Documented here because it's a real trap for anyone reproducing this phase's own live
    verification steps by hand.
 
+**Four more real findings, from the actual GitHub Actions run on this PR — not from local rehearsal,
+which had already passed clean:**
+
+4. **`gitleaks/gitleaks-action` failed with `"failed to scan Git repository" error="stderr is not
+   empty"`**, not an actual secret — it computes a commit-range diff and `actions/checkout`'s default
+   `fetch-depth: 1` doesn't have the base commit available to diff against. Fixed with
+   `fetch-depth: 0` on the `security` job's checkout.
+5. **`actions/dependency-review-action` failed outright**: `"Dependency review is not supported on
+   this repository. Please ensure that Dependency graph is enabled"` — a repository setting (Settings
+   → Security) only the repository owner can toggle, not something this workflow can enable itself.
+   Given `continue-on-error: true`; the prerequisite is documented in `docs/threat-model.md` §5 rather
+   than left to fail silently every run.
+6. **The container image scan found 9 real HIGH-severity CVEs**: `postgresql-42.7.11.jar`
+   (CVE-2026-54291, a SCRAM-SHA-256-PLUS channel-binding downgrade, fixed in 42.7.12) and 8 in
+   `usr/bin/pebble`, part of `eclipse-temurin`'s own Ubuntu base OS layer. Fixed the one within this
+   project's control by pinning `org.postgresql:postgresql` to 42.7.13 in `pom.xml` (overriding
+   Spring Boot's managed 42.7.11). The other 8 are upstream-owned and unfixable here short of a base
+   image change — documented in a new `.trivyignore` and `docs/threat-model.md` §6's Accepted risk
+   table, the same reasoning already applied to every other accepted item there.
+7. **Even after fixing/ignoring every real finding, the Trivy step kept exiting 1** — a documented
+   `trivy-action` bug (upstream issues #228, #309, #442): combining `format: sarif` with `exit-code`
+   in one invocation doesn't reliably respect `severity`/`trivyignores` for the pass/fail decision,
+   only for the report content, confirmed live (a run with a SARIF showing 0 error-level results and
+   `.trivyignore` visibly loaded still failed). Fixed by splitting into two separate Trivy invocations
+   in `ci.yml` — a `format: table` run that actually gates the build, and a separate `format: sarif`
+   run purely to produce the file the Security-tab upload consumes — `trivy-action`'s own documented
+   workaround.
+
+Every one of the seven bugs above was found by actually running something — a script, a local build,
+a real GitHub Actions job — never by inspection alone. Several (5, 6, 7) could only have been found by
+pushing to a real PR: no local rehearsal reproduces GitHub's own repository settings, its shallow
+default checkout, or `trivy-action`'s specific SARIF-mode behavior.
+
 **A second, larger documentation/reality gap found via direct `grep`, beyond what was planned:**
 `docs/architecture.md` §12 claimed Grafana dashboards were "provisioned from the repository" — none
 are; `infrastructure/` has no dashboard-provisioning files at all, and the `grafana/otel-lgtm`
@@ -626,9 +662,18 @@ Scope reductions, named rather than silently dropped:
 - Eight previously-claimed-but-unbuilt Prometheus metrics stay unbuilt this phase — see ADR-0012's
   Alternatives section for why.
 - Grafana dashboard provisioning is a real, now-honestly-documented gap, not built this phase.
-- Cutting a real `v0.1.0` tag / GitHub Release to prove `release.yml`'s tag-triggered path end to end
-  is a publishing action — verified instead via `workflow_dispatch` (no tag), which exercises the same
-  build/SBOM-generation code path without publishing anything.
+- `release.yml` itself has **not** been run on GitHub Actions yet — `gh workflow run release.yml`
+  returned a 404, because GitHub's `workflow_dispatch` API only recognizes a workflow once its file
+  exists on the repository's default branch, which `phase-8/hardening` isn't yet. The exact same real
+  platform constraint Phase 4 hit for `nightly-eval.yml` (see that phase's own note above) —
+  recognized this time, not rediscovered as a surprise, but still not something achievable before this
+  PR merges. What *is* verified: the SBOM-generation step in isolation
+  (`./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.9.2:makeAggregateBom` run locally, producing a real
+  `bom.json`/`bom.xml`) and that it does *not* run on a normal `mvnw verify`/`package` (the plugin's
+  own intrinsic phase-binding bug, fixed in `pom.xml`, see below). The full workflow — including the
+  `gh release create`/upload step — needs a real run once this merges to `main`, either via
+  `workflow_dispatch` or an actual tag push (the latter is a publishing action, needing separate
+  confirmation before it happens).
 
 ---
 
