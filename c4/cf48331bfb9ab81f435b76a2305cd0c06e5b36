@@ -1,0 +1,25 @@
+.github/workflows/ci.yml
+  s_f6c2719e97e037::t_cc13350d900aa7 47-49,58,85-95,97-101,105,112,122-124,126
+.trivyignore
+  s_f6c2719e97e037::t_a49b3433b42b66 1-17
+docs/threat-model.md
+  s_f6c2719e97e037::t_1083b2cc258137 221-228,248
+pom.xml
+  s_f6c2719e97e037::t_4dedf3a63062cb 46,58-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c4cf48331bfb9ab81f435b76a2305cd0c06e5b36",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
