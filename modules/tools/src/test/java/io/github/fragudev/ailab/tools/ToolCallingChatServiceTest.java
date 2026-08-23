@@ -86,6 +86,41 @@ class ToolCallingChatServiceTest {
         assertThat(resultChunk.toolResult().outcome()).isEqualTo(ToolCallOutcome.DENIED);
     }
 
+    /** Issue #22 (post-roadmap review S2): the confirmation gate and the executor must resolve a
+     * tool call from the same set. {@code phantom-tool} is registered globally — as an MCP-discovered
+     * tool would be after Phase 7 made {@link ToolRegistry} mutable — but never appears in
+     * {@code allTools}, the list this turn was actually offered and gated against. Before this fix,
+     * {@code definition.isEmpty()} made {@code requiresConfirmation} false and the call went straight
+     * to {@link ToolInvoker}, fully bypassing confirmation; it must now fail closed instead. */
+    @Test
+    void unknownToolForThisTurnFailsClosedInsteadOfExecuting() {
+        AtomicInteger phantomExecutions = new AtomicInteger();
+        Tool phantomTool = fakeTool("phantom-tool", Set.of(), false, phantomExecutions);
+        Tool decoyTool = fakeTool("decoy-tool", Set.of(), false, new AtomicInteger());
+        ScriptedChatProvider provider = new ScriptedChatProvider(
+                FALLBACK_CAPABILITIES, "{\"tool_call\":{\"name\":\"phantom-tool\",\"arguments\":{}}}", "Gave up.");
+        ToolInvoker invoker = new ToolInvoker(
+                new ToolRegistry(List.of(phantomTool, decoyTool)),
+                new SchemaValidator(),
+                new ScopeAuthorizer(properties),
+                null,
+                null);
+        ToolCallingChatService service =
+                new ToolCallingChatService(invoker, new PendingConfirmationRegistry(), properties);
+
+        List<ToolChatChunk> chunks = service.stream(
+                        provider, history("go"), List.of(decoyTool.definition()), ToolCallOrigin.PLAIN_CHAT, null)
+                .collectList()
+                .block(Duration.ofSeconds(5));
+
+        assertThat(phantomExecutions).hasValue(0);
+        ToolChatChunk resultChunk =
+                chunks.stream().filter(c -> c.toolResult() != null).findFirst().orElseThrow();
+        assertThat(resultChunk.toolResult().outcome()).isEqualTo(ToolCallOutcome.ERROR);
+        assertThat(resultChunk.toolResult().toolName()).isEqualTo("phantom-tool");
+        assertThat(chunks.get(chunks.size() - 1).aggregate().content()).isEqualTo("Gave up.");
+    }
+
     @Test
     void timeoutIsReportedWithoutHangingTheStream() {
         Tool slowTool = new Tool() {
