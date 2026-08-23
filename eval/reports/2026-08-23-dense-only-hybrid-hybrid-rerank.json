@@ -1,0 +1,87 @@
+{
+  "generatedAt" : "2026-08-23T09:08:53.436317Z",
+  "dataset" : {
+    "name" : "core",
+    "version" : "1"
+  },
+  "chatModel" : "none",
+  "profiles" : [ {
+    "ragProfile" : "dense-only",
+    "recallAtK" : {
+      "mean" : 0.10416666666666667,
+      "spread" : 0.0
+    },
+    "mrr" : {
+      "mean" : 0.06597222222222222,
+      "spread" : 0.0
+    },
+    "citationPrecision" : {
+      "mean" : null,
+      "spread" : 0.0
+    },
+    "citationRecall" : {
+      "mean" : 0.0,
+      "spread" : 0.0
+    },
+    "abstentionAccuracy" : {
+      "mean" : 1.0,
+      "spread" : 0.0
+    },
+    "latencyP50Ms" : 28,
+    "latencyP95Ms" : 37,
+    "totalPromptTokens" : 0,
+    "totalCompletionTokens" : 0
+  }, {
+    "ragProfile" : "hybrid",
+    "recallAtK" : {
+      "mean" : 0.1875,
+      "spread" : 0.0
+    },
+    "mrr" : {
+      "mean" : 0.1284722222222222,
+      "spread" : 0.0
+    },
+    "citationPrecision" : {
+      "mean" : null,
+      "spread" : 0.0
+    },
+    "citationRecall" : {
+      "mean" : 0.0,
+      "spread" : 0.0
+    },
+    "abstentionAccuracy" : {
+      "mean" : 1.0,
+      "spread" : 0.0
+    },
+    "latencyP50Ms" : 30,
+    "latencyP95Ms" : 36,
+    "totalPromptTokens" : 0,
+    "totalCompletionTokens" : 0
+  }, {
+    "ragProfile" : "hybrid-rerank",
+    "recallAtK" : {
+      "mean" : 0.16666666666666666,
+      "spread" : 0.0
+    },
+    "mrr" : {
+      "mean" : 0.09513888888888888,
+      "spread" : 0.0
+    },
+    "citationPrecision" : {
+      "mean" : null,
+      "spread" : 0.0
+    },
+    "citationRecall" : {
+      "mean" : 0.0,
+      "spread" : 0.0
+    },
+    "abstentionAccuracy" : {
+      "mean" : 1.0,
+      "spread" : 0.0
+    },
+    "latencyP50Ms" : 30,
+    "latencyP95Ms" : 35,
+    "totalPromptTokens" : 0,
+    "totalCompletionTokens" : 0
+  } ]
+}

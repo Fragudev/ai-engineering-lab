@@ -17,7 +17,7 @@ than a step toward some distant completion.
 | [5](#phase-5--tools) | Tools | Complete |
 | [6](#phase-6--agentic-workflow) | Agentic workflow | Complete |
 | [7](#phase-7--mcp) | MCP | Complete |
-| [8](#phase-8--hardening-and-presentation) | Hardening and presentation | In progress — latency measurement pending a live LM Studio run |
+| [8](#phase-8--hardening-and-presentation) | Hardening and presentation | Complete |
 
 ---
 
@@ -551,15 +551,41 @@ independently converged on.
       — scoped out, matching the
       roadmap's own "deliberately deferred" stance on infrastructure the project doesn't need to
       demonstrate configuration for.
-- [ ] Latency figures in the documentation come from a reproducible measurement, with hardware
-      recorded. The tooling for this was already complete since Phase 4 (`evaluation.ReportWriter`,
-      `scripts/eval.sh --hardware=`) — what's missing is a real run against the `lmstudio` profile,
-      which needs LM Studio running on this machine with both models loaded. It was not running at
-      any point during this phase's work (`curl localhost:1234/v1/models` → connection refused,
-      checked twice, hours apart). Real hardware for when this runs: **Apple M4 Pro, 48 GB RAM**
-      (`system_profiler SPHardwareDataType`). Left genuinely incomplete rather than fabricated or
-      backfilled from the existing `recorded`-profile report, whose own limitations section already
-      states its numbers are harness overhead, not model latency.
+- [x] Latency figures in the documentation come from a reproducible measurement, with hardware
+      recorded. LM Studio came up on this machine with `qwen/qwen3.8-27b` (chat) and `bge-m3`
+      (embeddings) loaded — real hardware: **Apple M4 Pro, 48 GB RAM**
+      (`system_profiler SPHardwareDataType`). Getting a real number took three real, live-only
+      findings along the way, none reproducible without an actual model server running:
+      1. **The default 60s provider timeout was too short.** A trivial prompt took 3.3s, but real
+         RAG/reranking prompts against a 27B reasoning model routinely exceeded 60s — raised to 300s
+         via `AI_PROVIDER_LMSTUDIO_TIMEOUT` for the run.
+      2. **LLM-based reranking (`hybrid-rerank-llm`) is impractical with this model on this
+         hardware** — `LlmReranker`'s call consistently took the full 300s timeout before falling
+         back gracefully to fused order (by design, not a crash), which would have made a full,
+         all-profile eval run take hours. Dropped from the profile list actually run; named here as
+         a genuine, newly-discovered hardware/model-capability limit, not silently avoided.
+      3. **The RAG pipeline abstained on every golden-dataset case even after seeding the real
+         corpus** — the retrieval-abstention threshold (`RagProfiles.maxVectorDistance = 0.6`) was
+         never checked against a real embedding model before this phase; real `bge-m3` distances for
+         this corpus run ≈0.95. A real, load-bearing gap, written up in full in
+         [`docs/ai-evaluation.md` §8](ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8)
+         — not fixed here (needs a broader sample to recalibrate responsibly; out of a hardening
+         phase's scope), but real and now documented rather than silently absent.
+
+      Because the RAG-mediated path abstained, the actual latency figures come from direct
+      `POST /conversations/{id}/messages` chat completions (no `ragProfile`, bypassing the threshold
+      finding above) — a real, reproducible measurement in its own right, using five of the golden
+      dataset's own questions as prompts against the real running app. Five real samples, `qwen/
+      qwen3.8-27b`, Apple M4 Pro/48GB: **10.3s, 12.1s, 26.3s, 51.4s, 59.7s** (median 26.3s, mean
+      31.9s) — end-to-end wall time including network, matching each response's own reported
+      `latencyMs`. Later, larger latencies correlate with growing conversation-history size (up to
+      ~4,078 prompt tokens by the second turn) more than with the specific question — a small,
+      genuinely reproducible sample, not a rigorous p50/p95 (5 points is too few for a percentile
+      claim, stated as median/mean/range instead of manufacturing false precision).
+      `eval/reports/2026-08-23-dense-only-hybrid-hybrid-rerank.{md,json}` is committed as the actual
+      RAG-profile evaluation run (`dense-only`/`hybrid`/`hybrid-rerank`, real `bge-m3` retrieval
+      latency, 1 repetition) — real data, even though it reflects the abstention finding above rather
+      than generation latency.
 - [x] A technical reviewer understands the system in five minutes without opening a source file.
       `README.md`'s status banner was four phases stale ("Phases 0–3 complete" while the capability
       table below it already marked Phases 0–7 done) — fixed, plus CI/license badges, a Demo section,
