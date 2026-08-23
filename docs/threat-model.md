@@ -218,7 +218,14 @@ generated and published as a GitHub Release asset on every tagged release (`rele
 base images are pinned by digest, not by tag (`app/Dockerfile`). Every third-party GitHub Action in
 these workflows is pinned to a commit SHA, not a mutable tag — motivated by a real incident:
 `aquasecurity/trivy-action`, one of the tools this project itself uses, had 75 of its 76 version tags
-force-pushed to credential-stealing code for roughly 12 hours in March 2026 (CVE-2026-33634). A
+force-pushed to credential-stealing code for roughly 12 hours in March 2026 (CVE-2026-33634).
+
+Two of the above degrade gracefully rather than being fully wired end to end, named rather than
+hidden: OWASP Dependency-Check runs without an `NVD_API_KEY` repository secret (a free key, only a
+repository owner can add it as a secret) and is correspondingly slow; GitHub's own
+`dependency-review-action` requires the repository's "Dependency graph" setting to be enabled
+(Settings → Security), also only a repository owner can toggle, and the CI step is configured to not
+fail the build while it's off. A
 tag-pinned dependency on that tool would have silently run the compromised code on the next CI run.
 
 The demo corpus is third-party content: sources, licenses and retrieval dates are recorded in
@@ -238,6 +245,7 @@ Documented rather than mitigated, because the mitigation cost exceeds the value 
 | Prompt-level injection defences are bypassable | Acknowledged as defence in depth; the structural controls carry the posture |
 | No rate limiting per user | One user; the global limit is sufficient |
 | No audit log shipping | Local Loki retention is adequate for the deployment context |
+| 8 HIGH-severity CVEs in `usr/bin/pebble` inside the `eclipse-temurin` base image, found by this project's own Trivy scan (Phase 8) | Base-image OS tooling, not a dependency this project declares or a binary it invokes; only clearable by an upstream image update, tracked in `.trivyignore` with the same reasoning rather than silently suppressed or left failing CI forever |
 
 ---
 

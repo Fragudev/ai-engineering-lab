@@ -43,6 +43,7 @@
     <spotless-maven-plugin.version>3.10.0</spotless-maven-plugin.version>
     <cyclonedx-maven-plugin.version>2.9.2</cyclonedx-maven-plugin.version>
     <dependency-check-maven.version>13.0.0</dependency-check-maven.version>
+    <postgresql.version>42.7.13</postgresql.version>
   </properties>
 
   <dependencyManagement>
@@ -53,6 +54,15 @@
         <version>${spring-ai.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <!-- Overrides spring-boot-starter-parent's managed 42.7.11: found by this phase's own live
+           Trivy scan (CVE-2026-54291, a SCRAM channel-binding downgrade, fixed in 42.7.12) — the one
+           finding from that scan actually within this project's control, as opposed to base-image OS
+           packages this project doesn't build (docs/threat-model.md Supply chain). -->
+      <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgresql.version}</version>
       </dependency>
       <dependency>
         <groupId>org.springframework.modulith</groupId>

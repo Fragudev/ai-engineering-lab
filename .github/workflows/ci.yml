@@ -44,6 +44,9 @@ jobs:
       # target of a real supply-chain compromise (CVE-2026-33634, March 2026 — 75 of 76 tags
       # force-pushed to credential-stealing code for ~12h); this SHA is v0.36.0, which postdates the
       # fix, verified via `git ls-remote --tags` against the upstream repo, not guessed.
+      # .trivyignore documents the specific, base-image-owned CVEs this project can't fix directly
+      # (found by this exact scan during Phase 8's own verification) — everything else still fails
+      # the build.
       - name: Scan container image (Trivy)
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
@@ -52,6 +55,7 @@ jobs:
           output: trivy-image-results.sarif
           severity: CRITICAL,HIGH
           exit-code: "1"
+          trivyignores: .trivyignore
 
       - name: Upload Trivy image scan results
         if: always()
@@ -78,18 +82,34 @@ jobs:
           java-version: "25"
           cache: maven
 
+      # Runs first and unconditionally (`if: always()` further down means nothing before this point
+      # can skip it): a real secret leaking is the one finding here that should genuinely stop the
+      # job, so this step deliberately has no continue-on-error, unlike the others below. Pinned to a
+      # commit SHA for the same reason as the Trivy image scan above — verified via `git ls-remote
+      # --tags` against gitleaks/gitleaks-action, not guessed. Personal (non-org) accounts don't need
+      # a license key for v3.
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # First-party GitHub action, zero config, no API key: diffs the PR's dependency graph against
-      # GitHub's advisory database. Only runs on pull_request events, since it needs a base to diff
-      # against — the always-on complement to the OWASP scan below.
+      # GitHub's advisory database. Requires the repository's own "Dependency graph" setting (Settings
+      # → Security → Dependency graph) to be enabled — a one-time, repo-owner-only prerequisite this
+      # workflow can't turn on itself, so this step degrades gracefully rather than failing the whole
+      # job when it isn't. Only runs on pull_request events, since it needs a base to diff against —
+      # the always-on complement to the OWASP scan below.
       - name: Dependency review
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        continue-on-error: true
 
       # docs/threat-model.md's supply-chain section names this tool specifically. Without an
       # NVD_API_KEY repository secret the NVD API's public rate limit makes this slow — it still
       # runs, just best-effort. Add the secret (free, see nvd.nist.gov/developers/request-an-api-key)
       # to make it fast and reliable.
       - name: Dependency scan (OWASP Dependency-Check)
+        id: dependency-check
         run: >
           ./mvnw -B org.owasp:dependency-check-maven:${DEPENDENCY_CHECK_VERSION}:aggregate
           -DnvdApiKey="${NVD_API_KEY}"
@@ -99,17 +119,12 @@ jobs:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         continue-on-error: true
 
+      # Only uploads if the report was actually produced — dependency-check's own step above can fail
+      # (no network access to the NVD, a cold cache with no NVD_API_KEY) without ever writing the
+      # file, and upload-sarif errors hard on a missing path rather than skipping quietly.
       - name: Upload Dependency-Check results
-        if: always()
+        if: always() && hashFiles('target/dependency-check-report.sarif') != ''
         uses: github/codeql-action/upload-sarif@e4d2851c4593439ac10bdcd57c5b06cac73b4775 # v3.37.8
         with:
           sarif_file: target/dependency-check-report.sarif
           category: dependency-check
-
-      # Pinned to a commit SHA for the same reason as the Trivy image scan above — verified via
-      # `git ls-remote --tags` against gitleaks/gitleaks-action, not guessed. Personal (non-org)
-      # accounts don't need a license key for v3.
-      - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
