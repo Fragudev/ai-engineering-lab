@@ -9,9 +9,7 @@ OpenTelemetry tracing, and an evaluation harness that produces numbers instead o
 
 Runs entirely on your own machine against a local model server. No API key required.
 
-> **Status: Phases 0–7 complete; Phase 8 (hardening) in progress** — CI security scanning, SBOM
-> releases and documentation are done, a real measured latency baseline is not yet, honestly, still
-> pending a live model-server run. Every capability below is marked with its current state, and
+> **Status: all 9 phases complete.** Every capability below is marked with its current state, and
 > nothing is claimed to work until it does. See [`docs/roadmap.md`](docs/roadmap.md) for the phase
 > plan and what each phase actually verified — including, in Phase 8, the doc/reality gaps that
 > phase's own review found and corrected.
@@ -229,6 +227,13 @@ latency and token cost per configuration.
 
 Reports are committed to `eval/reports/` with the date, chat model and hardware recorded, because a
 retrieval number without the model and machine behind it is not reproducible.
+
+**Real, measured chat latency** (Phase 8): five direct chat completions against a locally-running
+`qwen/qwen3.8-27b` on an Apple M4 Pro (48 GB RAM) — **10.3s, 12.1s, 26.3s, 51.4s, 59.7s**
+(median 26.3s). Five samples, stated as median/mean/range rather than a manufactured p50/p95 — see
+[`docs/roadmap.md`](docs/roadmap.md)'s Phase 8 section for the full methodology, including a real
+retrieval-threshold miscalibration this same live run surfaced
+([`docs/ai-evaluation.md` §8](docs/ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8)).
 
 Two things this project will **not** do: publish performance figures that were not measured, and
 present LLM-as-judge scores as primary evidence. Judge scores are reported as a secondary,

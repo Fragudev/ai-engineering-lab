@@ -164,3 +164,31 @@ committed.
   addressed by design, not by measurement.
 - **No corpus-scale testing.** Fifty cases over a small corpus. Behaviour at a million documents is
   an open question, and the honest answer to "how does it scale" is *this was not tested*.
+
+---
+
+## 8. A real finding from the first live-model run (Phase 8)
+
+Every prior evaluation run — the ones in `eval/reports/` before Phase 8 — used the `recorded`
+provider profile: fixture-replayed responses, and embeddings from `RecordedEmbeddingProvider`, which
+is hash-seeded to produce near-zero cosine distance for exact-text matches (deliberately, so
+integration tests can assert a retrieval hit deterministically). `RagProfiles`' `maxVectorDistance`
+thresholds (0.6 for `dense-only`/`hybrid`) were never checked against a *real* embedding model's
+actual distance distribution before this phase, because no prior phase had a live LM Studio run to
+check it against.
+
+Running the first-ever live evaluation against real `bge-m3` embeddings surfaced this immediately: a
+direct, unambiguous, answerable question against the corpus ("What is pgvector and what does it do?")
+returned a real top match with `vectorDistance` ≈ **0.95** — comfortably past the 0.6 threshold — so
+the pipeline abstained on every golden-dataset case, confirmed at both the harness level
+(`eval/reports/2026-08-23-dense-only-hybrid-hybrid-rerank.md`: `abstentionAccuracy` 1.0,
+`totalPromptTokens` 0 for every profile) and via a direct `POST /conversations/{id}/messages` call
+against the running app, which returned "The knowledge base doesn't contain enough information to
+answer this question" for the same clearly-answerable query.
+
+**Not fixed in Phase 8** — recalibrating `maxVectorDistance` responsibly needs a broader sample than
+the single query checked here (ideally the full golden dataset's real distance distribution), and
+that is a `rag`/`RagProfiles` change, not a hardening-phase one. Named here as a real, load-bearing
+gap this project did not know it had until the first live embedding-model run: **`recorded`-profile
+integration tests passing is not evidence that the retrieval thresholds are calibrated for a real
+embedding model.**
