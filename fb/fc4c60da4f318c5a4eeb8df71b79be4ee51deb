@@ -1,0 +1,31 @@
+app/src/main/java/io/github/fragudev/ailab/SendMessageRequest.java
+  s_f6c2719e97e037::t_55fc94bf61808a 4,8-13
+app/src/main/java/io/github/fragudev/ailab/ApiExceptionHandler.java
+  s_f6c2719e97e037::t_70428ba935c4f5 15,50-57
+app/src/main/java/io/github/fragudev/ailab/DocumentController.java
+  s_f6c2719e97e037::t_3764ea200bcd4c 32-36
+app/src/main/java/io/github/fragudev/ailab/ProblemDetails.java
+  s_f6c2719e97e037::t_dd3c6f995a0ca4 10,35-37
+app/src/main/resources/application.yml
+  s_f6c2719e97e037::t_26979732f5c3f0 17-26,112-122
+app/src/test/java/io/github/fragudev/ailab/InputSizeLimitIntegrationTest.java
+  s_f6c2719e97e037::t_f88a855701953a 1-101
+docs/threat-model.md
+  s_f6c2719e97e037::t_c8244a1273e767 138-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "fbfc4c60da4f318c5a4eeb8df71b79be4ee51deb",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
