@@ -10,6 +10,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Found via a real failure: every push-triggered run since this job started uploading a Trivy
+    # SARIF failed with "Resource not accessible by integration" — pull_request runs worked because
+    # PR-scoped tokens get broader default permissions than push-triggered ones on this repo's
+    # workflow-permissions setting. Explicit, matching the security job below, rather than relying on
+    # a default that silently differs by trigger event.
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
