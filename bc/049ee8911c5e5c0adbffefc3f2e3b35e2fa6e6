@@ -1,0 +1,31 @@
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/ToolCallingChatServiceTest.java
+  s_24993ec0f083a4::t_11c1e561ae95f5 89-123
+docs/adr/0009-tool-design-and-security-boundaries.md
+  s_f6c2719e97e037::t_f42dc30df29026 62-81
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/ToolCallingChatService.java
+  s_f6c2719e97e037::t_2562fa76e07845 107-109,113-126,129-132,164-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bc049ee8911c5e5c0adbffefc3f2e3b35e2fa6e6",
+  "prompts": {},
+  "sessions": {
+    "s_24993ec0f083a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f88a8ec-e8f2-4c12-b96a-31fd4abf292b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
