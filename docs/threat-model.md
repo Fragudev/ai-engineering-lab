@@ -3,8 +3,9 @@
 Structured on STRIDE for the conventional application surface and the OWASP Top 10 for LLM
 Applications for the parts that are specific to running a language model.
 
-**Status:** design-phase model. Mitigations marked *planned* describe intended controls, not
-implemented ones. This document is completed and re-reviewed in Phase 8.
+**Status:** Reviewed and completed in Phase 8. Mitigations marked *planned* describe intended
+controls, not implemented ones — every other mitigation described here was checked against the code
+that implements it as part of this review, not assumed from an earlier phase's intent.
 
 ---
 
@@ -65,9 +66,12 @@ A user instructs the model to ignore its system prompt, reveal it, or act outsid
 *Impact:* low in a single-user system — the user attacking themselves gains nothing they did not
 already have. Modelled because the mitigation is a prerequisite for multi-tenancy.
 
-*Mitigations (planned):* system instructions kept in a separate message role, never assembled from
-user content; the system prompt treated as non-secret, so its disclosure is not a security event;
-tool authorization enforced outside the prompt, so no instruction can grant capability.
+*Mitigations:* system instructions kept in a separate message role, never assembled from user content
+(`rag.RagPipeline` builds `ChatMessage.system(...)` from a fixed constant and the retrieved context,
+never from user input); the system prompt treated as non-secret, so its disclosure is not a security
+event; tool authorization enforced outside the prompt, in `tools.internal.ScopeAuthorizer` against a
+config-declared scope list, so no instruction can grant capability. Reviewed and confirmed real in
+Phase 8 — built incrementally across Phases 1, 3 and 5, never previously checked off as such.
 
 ### T2 — Indirect prompt injection via ingested documents
 
@@ -126,16 +130,17 @@ actually makes outbound requests exists, which none does yet.
 Unbounded token consumption through long conversations, large uploads or workflow loops. Free
 locally, expensive against a paid provider.
 
+*Mitigations:* **hard step limit on workflow runs, built Phase 6.**
+`ai.workflow.max-llm-calls-per-run` (default 20) is checked incrementally as
+`workflow.internal.DocumentationResearchEngine` issues each LLM call; exceeding it compensates the
+run (a clean `FAILED` state, not a runaway loop). A reasoned starting bound, not tuned against any
+dataset, and scoped per engine invocation — not cumulative across a restart+resume
+(docs/adr/0010-agent-orchestration.md names this limitation explicitly). The first of this threat's
+several mitigations to move to implemented.
+
 *Mitigations (planned):* per-request and per-conversation token budgets; context window enforced at
 build time, not discovered at the API; rate limiting per endpoint; cost metrics with alerting
 thresholds; upload size and page count limits.
-
-**Hard step limit on workflow runs — built Phase 6.** `ai.workflow.max-llm-calls-per-run` (default
-20) is checked incrementally as `workflow.internal.DocumentationResearchEngine` issues each LLM call;
-exceeding it compensates the run (a clean `FAILED` state, not a runaway loop). A reasoned starting
-bound, not tuned against any dataset, and scoped per engine invocation — not cumulative across a
-restart+resume (docs/adr/0010-agent-orchestration.md names this limitation explicitly). The first of
-this threat's several planned mitigations to move to implemented.
 
 ### T6 — Knowledge base poisoning
 
@@ -192,22 +197,29 @@ See [ADR-0011](adr/0011-mcp-tool-exposure-boundaries.md).
 
 ## 4. STRIDE on the conventional surface
 
-| Category | Threat | Mitigation (planned) |
+| Category | Threat | Mitigation |
 |---|---|---|
-| **Spoofing** | Unauthenticated API access | Spring Security on every endpoint except health and the UI shell; API key or signed JWT |
-| **Tampering** | Event or database modification | Kafka and PostgreSQL not exposed outside the Compose network; parameterised queries; Flyway checksums |
+| **Spoofing** | Unauthenticated API access | *Planned:* Spring Security on every endpoint except health and the UI shell; API key or signed JWT. Not built — no Spring Security dependency exists in this codebase, matching the single-user, no-multi-tenancy stance stated throughout this document. |
+| **Tampering** | Event or database modification | Kafka and PostgreSQL not exposed outside the Compose network; parameterised queries (Spring Data JPA); Flyway checksums |
 | **Repudiation** | No record of what happened | Every message, tool invocation and workflow step persisted with timestamps and correlation ids |
-| **Information disclosure** | Secrets in the repository or logs | No secrets committed; `.env` git-ignored; gitleaks in CI; redaction by default |
-| **Denial of service** | Resource exhaustion via uploads or queries | Upload size limits; rate limiting; connection pool bounds; consumer concurrency caps; circuit breaker on the model server |
+| **Information disclosure** | Secrets in the repository or logs | No secrets committed; `.env` git-ignored; **gitleaks in CI, built Phase 8** (`.github/workflows/ci.yml`); redaction by default |
+| **Denial of service** | Resource exhaustion via uploads or queries | *Planned, not built:* upload size limits, rate limiting, connection pool bounds, consumer concurrency caps, and a circuit breaker on the model server — none of these are explicitly configured today; Spring Boot/Spring Kafka's own defaults apply, which are not the same as a deliberate limit. |
 | **Elevation of privilege** | Escaping the single-user role | No dynamic role assignment; tool scopes static and declared in code, never derived from input |
 
 ---
 
 ## 5. Supply chain
 
-Dependencies pinned to exact versions, no ranges. OWASP Dependency-Check and Trivy in CI. CodeQL on
-pull requests. Dependabot for updates. A CycloneDX SBOM published from Phase 8. Docker base images
-pinned by digest, not by tag.
+Dependencies pinned to exact versions, no ranges. **Built Phase 8, verified in CI, not merely
+declared here:** OWASP Dependency-Check and Trivy (container image + config) run in `ci.yml`; CodeQL
+runs on pushes, pull requests and weekly on a schedule (`codeql.yml`); Dependabot watches Maven,
+GitHub Actions and the Dockerfile's base images (`.github/dependabot.yml`); a CycloneDX SBOM is
+generated and published as a GitHub Release asset on every tagged release (`release.yml`); Docker
+base images are pinned by digest, not by tag (`app/Dockerfile`). Every third-party GitHub Action in
+these workflows is pinned to a commit SHA, not a mutable tag — motivated by a real incident:
+`aquasecurity/trivy-action`, one of the tools this project itself uses, had 75 of its 76 version tags
+force-pushed to credential-stealing code for roughly 12 hours in March 2026 (CVE-2026-33634). A
+tag-pinned dependency on that tool would have silently run the compromised code on the next CI run.
 
 The demo corpus is third-party content: sources, licenses and retrieval dates are recorded in
 `corpus/ATTRIBUTION.md`, and the corpus is downloaded by a script rather than committed, so

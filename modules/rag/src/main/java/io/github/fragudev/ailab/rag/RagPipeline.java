@@ -6,6 +6,7 @@ import io.github.fragudev.ailab.aiprovider.ChatResponse;
 import io.github.fragudev.ailab.aiprovider.TokenUsage;
 import io.github.fragudev.ailab.knowledge.HybridSearchOptions;
 import io.github.fragudev.ailab.knowledge.HybridSearchService;
+import io.github.fragudev.ailab.knowledge.RerankStrategy;
 import io.github.fragudev.ailab.knowledge.SearchResult;
 import io.github.fragudev.ailab.rag.internal.CitationExtractor;
 import io.github.fragudev.ailab.rag.internal.ContextBuilder;
@@ -14,6 +15,8 @@ import io.github.fragudev.ailab.tools.ToolCallOrigin;
 import io.github.fragudev.ailab.tools.ToolCallingChatService;
 import io.github.fragudev.ailab.tools.ToolChatChunk;
 import io.github.fragudev.ailab.tools.ToolRegistry;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -45,6 +48,7 @@ public class RagPipeline {
     private final ChatProvider chatProvider;
     private final ToolCallingChatService toolCallingChatService;
     private final ToolRegistry toolRegistry;
+    private final ObservationRegistry observationRegistry;
 
     public RagPipeline(
             QueryNormalizer queryNormalizer,
@@ -52,20 +56,22 @@ public class RagPipeline {
             ContextBuilder contextBuilder,
             ChatProvider chatProvider,
             ToolCallingChatService toolCallingChatService,
-            ToolRegistry toolRegistry) {
+            ToolRegistry toolRegistry,
+            ObservationRegistry observationRegistry) {
         this.queryNormalizer = queryNormalizer;
         this.hybridSearchService = hybridSearchService;
         this.contextBuilder = contextBuilder;
         this.chatProvider = chatProvider;
         this.toolCallingChatService = toolCallingChatService;
         this.toolRegistry = toolRegistry;
+        this.observationRegistry = observationRegistry;
     }
 
     /** {@code history} is the turn history exactly as sent to a plain {@code ChatProvider} call —
      * {@code query} is appended as the newest user turn after the retrieved-context system message. */
     public Flux<RagAnswerChunk> answer(List<ChatMessage> history, String query, RagProfile profile) {
         String normalizedQuery = queryNormalizer.normalize(history, query);
-        List<SearchResult> results = hybridSearchService.search(normalizedQuery, toSearchOptions(profile));
+        List<SearchResult> results = retrieve(normalizedQuery, profile);
 
         if (shouldAbstain(results, profile)) {
             RagAnswer insufficientAnswer = new RagAnswer(
@@ -113,8 +119,24 @@ public class RagPipeline {
      * {@code POST /api/v1/retrieval:search}. */
     public RetrievalTrace search(String query, RagProfile profile) {
         String normalizedQuery = queryNormalizer.normalize(List.of(), query);
-        List<SearchResult> results = hybridSearchService.search(normalizedQuery, toSearchOptions(profile));
+        List<SearchResult> results = retrieve(normalizedQuery, profile);
         return new RetrievalTrace(query, normalizedQuery, profile, results);
+    }
+
+    /** One {@link Observation} per retrieval, named {@code rag.retrieve} to sit alongside
+     * {@code ai-provider}'s {@code gen_ai.chat} in the same trace — attributes named under the
+     * project-invented {@code rag.*} namespace, since OTel's GenAI semantic conventions don't cover
+     * retrieval (docs/adr/0012-observability-conventions.md). */
+    private List<SearchResult> retrieve(String normalizedQuery, RagProfile profile) {
+        Observation observation = Observation.createNotStarted("rag.retrieve", observationRegistry)
+                .lowCardinalityKeyValue("rag.top_k", String.valueOf(profile.topK()))
+                .lowCardinalityKeyValue(
+                        "rag.rerank.enabled", String.valueOf(profile.rerankStrategy() != RerankStrategy.NONE));
+        return observation.observe(() -> {
+            List<SearchResult> results = hybridSearchService.search(normalizedQuery, toSearchOptions(profile));
+            observation.highCardinalityKeyValue("rag.retrieved_chunk_count", String.valueOf(results.size()));
+            return results;
+        });
     }
 
     private static List<RagAnswerChunk> finalizeAnswer(

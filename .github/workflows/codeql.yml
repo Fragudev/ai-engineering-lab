@@ -1,0 +1,47 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Catches new advisories against code that hasn't changed, same rationale as nightly-eval.yml's
+    # own schedule.
+    - cron: "17 3 * * 1"
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # First-party GitHub action; SHA-pinned for consistency with this repo's action-pinning policy
+      # (see ci.yml's Trivy step comment for why), verified via `git ls-remote --tags` against
+      # github/codeql-action, not guessed.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e4d2851c4593439ac10bdcd57c5b06cac73b4775 # v3.37.8
+        with:
+          languages: java-kotlin
+
+      # Autobuild doesn't reliably detect a Maven-wrapper multi-module reactor on a brand-new JDK
+      # release; building explicitly is one fewer thing to debug when this workflow misbehaves.
+      - name: Build
+        run: ./mvnw -B -DskipTests -pl app -am package
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@e4d2851c4593439ac10bdcd57c5b06cac73b4775 # v3.37.8
+        with:
+          category: "/language:java-kotlin"

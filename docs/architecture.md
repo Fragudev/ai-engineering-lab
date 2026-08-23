@@ -3,8 +3,9 @@
 How the system is built and, more importantly, why. Individual decisions have their own records in
 [`adr/`](adr/); this document is the connective tissue between them.
 
-**Status:** design. No implementation yet. This document is the specification the implementation is
-held to, not a description of existing code.
+**Status:** All 8 implementation phases (`docs/roadmap.md`) are complete. This document describes the
+system as built, not a design intent — sections note which phase built each piece, and any remaining
+gap between what's described and what's real is named explicitly rather than left implicit.
 
 ---
 
@@ -527,6 +528,86 @@ sequenceDiagram
     end
 ```
 
+### Tool calling with confirmation
+
+The pause/approve/resume gate (docs/threat-model.md T2, [ADR-0009](adr/0009-tool-design-and-security-boundaries.md)) —
+built Phase 5, not obvious from reading `tools.ToolCallingChatService` alone since the confirmation
+wait spans two separate HTTP requests.
+
+```mermaid
+sequenceDiagram
+    participant U as Browser
+    participant A as api
+    participant T as tools
+    participant P as ai-provider
+    participant L as LM Studio
+
+    A->>T: stream(history, availableTools, origin)
+    T->>P: stream(request + tool-calling system prompt)
+    P->>L: /v1/chat/completions (stream)
+    L-->>P: full response (a tool-call envelope)
+    P-->>T: aggregate
+    T->>T: parse tool call, resolve ToolDefinition
+    alt turn untrusted OR alwaysRequiresConfirmation
+        T-->>A: SSE: tool_call
+        T-->>A: SSE: tool_call_pending (callId, timeout)
+        A-->>U: SSE forwarded
+        U->>A: POST /tool-calls/{callId}:confirm {approved}
+        A->>T: resolve pending confirmation
+        alt approved
+            T->>T: ToolInvoker.invokeOrThrow (schema, scope, timeout)
+        else denied or timeout
+            T->>T: outcome = DENIED
+        end
+    else trusted, first call this turn
+        T-->>A: SSE: tool_call
+        T->>T: ToolInvoker.invokeOrThrow (ungated)
+    end
+    T-->>A: SSE: tool_result
+    Note over T: if the tool has introducesRetrievedContent,<br/>the turn latches untrusted from here on
+    T->>P: stream(history + tool result) — next round
+    P->>L: /v1/chat/completions (stream)
+    L-->>P: final answer
+    P-->>T: aggregate
+    T-->>A: SSE: token (per delta), then done
+```
+
+### MCP handshake and tool call
+
+Discovery happens once at startup; every subsequent call is gated unconditionally
+(docs/threat-model.md T9, [ADR-0011](adr/0011-mcp-tool-exposure-boundaries.md)) — built Phase 7, the
+newest and least self-explanatory flow, since it spans a background registrar and the same
+confirmation gate as the diagram above.
+
+```mermaid
+sequenceDiagram
+    participant App as ApplicationReadyEvent
+    participant R as mcp.McpClientToolRegistrar
+    participant C as McpSyncClient
+    participant S as External MCP server
+    participant Reg as tools.ToolRegistry
+    participant T as tools.ToolCallingChatService
+
+    App->>R: fired once, application accepting connections
+    R->>C: initialize()
+    C->>S: JSON-RPC initialize
+    S-->>C: InitializeResult (server name)
+    R->>C: listTools()
+    C->>S: JSON-RPC tools/list
+    S-->>C: tool schemas
+    R->>R: wrap each as McpClientTool,<br/>name := mcp:&lt;server&gt;:&lt;tool&gt;,<br/>alwaysRequiresConfirmation = true
+    R->>Reg: register(tool) — for each
+
+    Note over T: later, during a chat turn (see "Tool calling with confirmation")
+    T->>T: definition.alwaysRequiresConfirmation() == true
+    Note over T: gated on every call, regardless of<br/>turn origin or latching state
+    T->>Reg: find("mcp:<server>:<tool>")
+    T->>C: (via ToolInvoker → McpClientTool.execute) callTool(request)
+    C->>S: JSON-RPC tools/call
+    S-->>C: CallToolResult
+    C-->>T: ToolResult
+```
+
 ---
 
 ## 11. Testing strategy
@@ -541,7 +622,7 @@ sequenceDiagram
 | Failure path | Testcontainers + Toxiproxy | Database down, Kafka down, slow model, retry exhaustion → DLT |
 | AI evaluation | `evaluation` module + `scripts/eval.sh` (custom runner, not a tagged test suite) | Retrieval and answer quality |
 | Static | Spotless, Error Prone, NullAway | Formatting, correctness, nullability |
-| Security | OWASP Dependency-Check, Trivy, CodeQL, gitleaks | Dependencies, images, code, secrets |
+| Security | OWASP Dependency-Check, Trivy, CodeQL, gitleaks — all real CI jobs since Phase 8 (`.github/workflows/ci.yml`, `codeql.yml`) | Dependencies, images, code, secrets |
 
 **Failure-path tests are the differentiating layer.** Everyone tests the happy path. Demonstrating
 that a document whose embedding stage fails three times lands in the dead-letter topic with its job
@@ -561,29 +642,43 @@ validation on both sides covers it. Recorded as a deliberate omission rather tha
 
 ## 12. Observability
 
+See [ADR-0012](adr/0012-observability-conventions.md) for the naming conventions behind what follows,
+and why this section names only what's real, not what was once intended.
+
 **Traces.** OpenTelemetry SDK → Collector → Tempo. One trace per request, propagated through Kafka
-headers to the end of ingestion. Dedicated spans per RAG stage with attributes: `rag.top_k`,
-`rag.retrieved_ids`, `rag.rerank.enabled`, `llm.model`, `llm.prompt_tokens`,
-`llm.completion_tokens`, `llm.cost_usd`. OTel GenAI semantic conventions are followed where they
-exist.
+headers to the end of ingestion. Two real spans carry attributes today: `ai-provider`'s `gen_ai.chat`
+(`gen_ai.system`, `gen_ai.request.model`, `gen_ai.response.model`, `gen_ai.usage.input_tokens`,
+`gen_ai.usage.output_tokens` — the current OTel GenAI semantic convention namespace, Phase 1) and
+`rag`'s `rag.retrieve` (`rag.top_k`, `rag.rerank.enabled`, `rag.retrieved_chunk_count` — a
+project-defined namespace for the retrieval stage, which GenAI semconv doesn't cover, Phase 8).
 
-**Metrics.** Prometheus.
+**Metrics.** Prometheus. Real today:
 
-- `rag_request_duration_seconds` — histogram, labelled by stage
-- `llm_tokens_total{direction, model}`, `llm_cost_usd_total`
-- `ingestion_job_duration_seconds`, `ingestion_jobs_active`
-- `kafka_consumer_lag`, `dlt_messages_total`
-- `tool_invocation_total{tool, outcome}`, `tool_duration_seconds`
-- `retrieval_score_distribution`
+- `tool_invocation_total{tool, outcome}`, `tool_duration_seconds` (`tools.internal.ToolMetrics`, Phase 5)
+- `workflow_run_total{type, status}`, `workflow_step_duration_seconds{stage, status}`
+  (`workflow.internal.WorkflowMetrics`, Phase 6)
+
+**Not yet built** — named plainly rather than left to look implemented: `rag_request_duration_seconds`,
+`llm_tokens_total`, `llm_cost_usd_total`, `ingestion_job_duration_seconds`, `ingestion_jobs_active`,
+`kafka_consumer_lag`, `dlt_messages_total`, `retrieval_score_distribution`. Building them without a
+concrete consumer (a dashboard panel, an alert — neither exists today, see below) would be
+speculative work this project's own `docs/roadmap.md` "Deliberately deferred" table already argues
+against for comparable cases (see ADR-0012).
 
 **Logs.** Structured JSON with `traceId` and `correlationId`, shipped to Loki. **Prompts and
 completions are redacted by default**, with a local-only flag to enable them for debugging. Logging
 full prompts by default would be a data leak in any real deployment; the flag and its warning are
 deliberate.
 
-**Dashboards** are provisioned from the repository, not clicked together by hand: one for system
-health, one for AI cost and quality. The chat UI links each answer to its trace in Grafana — a small
-detail that changes a demo from "here is a chatbot" to "here is what it did and what it cost".
+**Dashboards.** No dashboards are provisioned from the repository — this was previously stated here
+and was never true; corrected in Phase 8's documentation review rather than left. Today, Grafana's
+own Explore view (`grafana/otel-lgtm`'s default UI, no provisioning needed) is how traces, logs and
+the two real metric families get inspected. The chat UI links each answer to Grafana's Explore view
+with its `traceId` shown alongside, so a user can search for the exact trace — a small detail that
+still changes a demo from "here is a chatbot" to "here is what it did," even without a
+purpose-built dashboard. Provisioned dashboards (one for system health, one for AI cost and quality)
+remain a real, named gap, not a silently dropped promise — building them well depends on the metrics
+listed above as not-yet-built existing first.
 
 The observability stack runs as a single `grafana/otel-lgtm` container rather than four separate
 services, to keep the Compose file readable.
@@ -660,6 +755,9 @@ demonstrates less than the analysis does. For the record, this is how it would m
   preserved. The provider abstraction is the entire migration.
 - **Observability** — the OTel Collector already exports OTLP; the backend becomes a configuration
   change.
+- **Supply chain** — Phase 8's CI scanning (dependency, container, secret, CodeQL) and the CycloneDX
+  SBOM published per release (`.github/workflows/release.yml`) already produce what a real deployment
+  pipeline's admission-control gate would consume; nothing further is deployment-specific about them.
 - **What would need real work** — secrets management, per-tenant isolation, cost controls with hard
   budget enforcement, and a retrieval-quality regression gate in the deployment pipeline.
 
@@ -671,11 +769,11 @@ demonstrates less than the analysis does. For the record, this is how it would m
 |---|---|---|
 | Local models too weak for reliable tool calling | High | `ProviderCapabilities` + structured-output fallback; `openai` profile for comparison; difference documented |
 | LM Studio is a manual prerequisite, weakening clone-and-run | Medium | Bootstrap script with actionable errors; `recorded` profile needs no model server |
-| Changing the embedding model forces a full reindex | Medium | Dimension fixed and verified at startup; `reindex.sh`; recorded in ADR-0003 |
+| Changing the embedding model forces a full reindex | Medium | Dimension fixed and verified at startup; no dedicated reindex script exists — today a reindex means clearing `chunk` and re-running `scripts/seed.sh`/re-uploading, a real gap, not a built tool; recorded in ADR-0003 |
 | Kafka before the domain is stable | Medium | Versioned event contracts from the first commit; consumers behind interfaces |
 | Scope exceeds available time | High | Phased delivery with clean stopping points; Phase 4 is the "presentable" line |
 | LLM-as-judge with a local model is a weak instrument | Medium | Deterministic metrics are primary; limitation stated in the evaluation report |
-| Documentation drifting from implementation | Medium | Modulith-generated module docs; documentation check in CI |
+| Documentation drifting from implementation | Medium | No automated doc-drift check exists — this project relies on documentation shipping with the change (`CONTRIBUTING.md`'s own rule) and an end-of-phase audit; Phase 8's own review found and corrected several places where this had already drifted (this table's previous two rows among them) |
 
 **Accepted debt**, stated in the README because acknowledging it is worth more than hiding it: no
 multi-tenancy, no row-level authorization, no Kubernetes, no schema registry, no trained reranker, no

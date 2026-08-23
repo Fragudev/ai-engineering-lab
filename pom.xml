@@ -41,6 +41,8 @@
 
     <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
     <spotless-maven-plugin.version>3.10.0</spotless-maven-plugin.version>
+    <cyclonedx-maven-plugin.version>2.9.2</cyclonedx-maven-plugin.version>
+    <dependency-check-maven.version>13.0.0</dependency-check-maven.version>
   </properties>
 
   <dependencyManagement>
@@ -168,6 +170,33 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+
+      <!-- Not bound to the default lifecycle — invoked explicitly (release.yml: makeAggregateBom;
+           CI's security job: dependency-check:check), so `./mvnw verify` stays fast for local dev.
+           cyclonedx-maven-plugin binds makeAggregateBom to the `package` phase on its own even with
+           no <executions> declared here — confirmed by a real `./mvnw verify` run producing a
+           `*-cyclonedx.json` in every module's target/ unprompted. The empty-phase override below is
+           the standard Maven technique to cancel a plugin's own intrinsic default binding. -->
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+        <version>${cyclonedx-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>default</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.owasp</groupId>
+        <artifactId>dependency-check-maven</artifactId>
+        <version>${dependency-check-maven.version}</version>
+        <configuration>
+          <format>SARIF</format>
+          <failBuildOnCVSS>9</failBuildOnCVSS>
+        </configuration>
       </plugin>
     </plugins>
   </build>

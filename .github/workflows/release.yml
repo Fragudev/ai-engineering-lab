@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # Same build the tag is meant to represent — a release built from an unverified artifact isn't
+      # a release, it's a guess (AGENTS.md's no-invented-claims rule applies to artifacts too).
+      - name: Build and verify
+        run: ./mvnw -B verify
+
+      # Not bound to any Maven lifecycle phase (pom.xml) — invoked explicitly here only, so local and
+      # CI `mvnw verify` runs stay unaffected. Aggregates every module into one SBOM at the repo root.
+      - name: Generate CycloneDX SBOM
+        run: ./mvnw -B org.cyclonedx:cyclonedx-maven-plugin:2.9.2:makeAggregateBom
+
+      - name: Locate SBOM
+        id: sbom
+        run: |
+          JSON=$(find . -maxdepth 2 -name 'bom.json' | head -1)
+          XML=$(find . -maxdepth 2 -name 'bom.xml' | head -1)
+          echo "json=${JSON}" >> "$GITHUB_OUTPUT"
+          echo "xml=${XML}" >> "$GITHUB_OUTPUT"
+
+      # workflow_dispatch is a dry run: proves the SBOM generates correctly without cutting a real
+      # tag or GitHub Release. A tag push does the real thing below.
+      - name: Upload SBOM as a workflow artifact (dry run)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            ${{ steps.sbom.outputs.json }}
+            ${{ steps.sbom.outputs.xml }}
+
+      - name: Publish SBOM to the GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            "${{ steps.sbom.outputs.json }}#Software Bill of Materials (CycloneDX JSON)" \
+            "${{ steps.sbom.outputs.xml }}#Software Bill of Materials (CycloneDX XML)"

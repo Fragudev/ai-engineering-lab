@@ -43,7 +43,10 @@ while IFS= read -r id; do
     -F "file=@${file};type=text/markdown" \
     -F "title=${id}")" || { rm -f "${response_headers}"; fail "Upload failed for '${id}'"; }
 
-  location="$(grep -i '^location:' "${response_headers}" | sed -E 's/^[Ll]ocation:[[:space:]]*//' | tr -d '\r')"
+  # grep exits 1 when a document is already indexed (200, no Location header) — under this script's
+  # own `set -e pipefail`, that would otherwise kill the script instead of reaching the dedup branch
+  # below (found and fixed alongside the same bug in scripts/demo.sh, Phase 8).
+  location="$({ grep -i '^location:' "${response_headers}" || true; } | sed -E 's/^[Ll]ocation:[[:space:]]*//' | tr -d '\r')"
   rm -f "${response_headers}"
 
   if [ -z "${location}" ]; then
