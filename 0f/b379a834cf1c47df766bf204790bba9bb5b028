@@ -1,0 +1,31 @@
+app/src/main/java/io/github/fragudev/ailab/SecurityHeadersFilter.java
+  s_f6c2719e97e037::t_099483ed9bae64 1-41
+app/src/main/resources/static/app.css
+  s_f6c2719e97e037::t_9e095ecde67698 1-107
+app/src/main/resources/static/app.js
+  s_f6c2719e97e037::t_5f9dca55bcf656 1-215
+app/src/main/resources/static/index.html
+  s_f6c2719e97e037::t_39cda5aa362ca7 7,28
+app/src/test/java/io/github/fragudev/ailab/DocumentXssRegressionTest.java
+  s_f6c2719e97e037::t_7eaefcb1d6c9a1 1-73
+app/src/test/java/io/github/fragudev/ailab/StaticUiXssRegressionTest.java
+  s_f6c2719e97e037::t_336c01104cee4e 1-30
+docs/threat-model.md
+  s_f6c2719e97e037::t_a3001bb0b9300d 165-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0fb379a834cf1c47df766bf204790bba9bb5b028",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
