@@ -14,6 +14,16 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      # Decided, not inherited (docs/threat-model.md T5, post-roadmap review S3): Spring Boot's own
+      # default (1 MB) was never a chosen value for a document-ingestion product. 10 MB is a
+      # reasoned bound, not measured against a dataset (AGENTS.md rule 2) — the real corpus's
+      # largest document is ~42 KB, so this leaves generous headroom for real text/markdown uploads
+      # while still bounding DocumentController.upload's file.getBytes() in-memory read (see its
+      # javadoc for why that read isn't streamed instead).
+      max-file-size: 10MB
+      max-request-size: 10MB
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -99,6 +109,17 @@ ai:
 
 server:
   port: 8080
+  tomcat:
+    # Tomcat's own default (2 MB) is well under spring.servlet.multipart.max-file-size above: once
+    # a request is rejected as too large, Tomcat still has to either read ("swallow") and discard
+    # the rest of the body or give up and close the connection outright — under this default, an
+    # upload only a little over the 10 MB multipart limit exceeds the 2 MB swallow budget too, so
+    # the connection gets reset before ApiExceptionHandler's clean 413 Problem Details response ever
+    # reaches the client (a real failure this surfaced, not a hypothetical one — see
+    # InputSizeLimitIntegrationTest). 15 MB comfortably covers the multipart limit's own excess
+    # without going unbounded (server.tomcat.max-swallow-size: -1), which would let an oversized
+    # request make Tomcat read and discard an arbitrarily large body before responding.
+    max-swallow-size: 15MB
 
 management:
   endpoints:

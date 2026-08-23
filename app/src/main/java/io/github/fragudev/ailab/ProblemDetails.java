@@ -7,6 +7,7 @@ import io.github.fragudev.ailab.shared.ToolTimeoutException;
 import java.util.NoSuchElementException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * One place mapping typed exceptions from {@code shared} to RFC 9457 Problem Details, used both by
@@ -30,6 +31,9 @@ final class ProblemDetails {
         }
         if (error instanceof ToolAuthorizationException) {
             return HttpStatus.FORBIDDEN;
+        }
+        if (error instanceof MaxUploadSizeExceededException) {
+            return HttpStatus.PAYLOAD_TOO_LARGE;
         }
         if (error instanceof NoSuchElementException) {
             return HttpStatus.NOT_FOUND;

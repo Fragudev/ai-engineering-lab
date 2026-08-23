@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * Every exception that reaches here becomes an RFC 9457 Problem Detail, never a bare 500 with a
@@ -46,6 +47,14 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(ToolTimeoutException.class)
     ResponseEntity<ProblemDetail> handleToolTimeout(ToolTimeoutException e) {
+        return respond(e);
+    }
+
+    // spring.servlet.multipart.max-file-size/max-request-size (application.yml, post-roadmap review
+    // S3) — without this handler, Spring's default error page would surface instead of a clean
+    // Problem Details body.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ProblemDetail> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
         return respond(e);
     }
 

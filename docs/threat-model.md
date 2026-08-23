@@ -135,8 +135,29 @@ locally, expensive against a paid provider.
 `workflow.internal.DocumentationResearchEngine` issues each LLM call; exceeding it compensates the
 run (a clean `FAILED` state, not a runaway loop). A reasoned starting bound, not tuned against any
 dataset, and scoped per engine invocation — not cumulative across a restart+resume
-(docs/adr/0010-agent-orchestration.md names this limitation explicitly). The first of this threat's
-several mitigations to move to implemented.
+(docs/adr/0010-agent-orchestration.md names this limitation explicitly).
+
+**Upload and chat message size limits, built in the post-roadmap review (issue #23).** Before this,
+no `spring.servlet.multipart.*` configuration existed anywhere — Spring Boot's own default (1 MB per
+file) applied by inheritance, never a value this project actually chose, and no length limit existed
+on chat message content at all. Now: `spring.servlet.multipart.max-file-size`/`max-request-size`
+(`application.yml`) are set to 10 MB, a reasoned bound two orders of magnitude above the real
+corpus's largest document (~42 KB); `SendMessageRequest.content` carries `@Size(max = 8000)`
+(~2,000 tokens at a rough 4-chars/token estimate), rejected as a clean 400 Problem Details response
+by the existing `MethodArgumentNotValidException` handler. A real, secondary finding surfaced while
+verifying this: Tomcat's own default `max-swallow-size` (2 MB) is well under the 10 MB multipart
+limit, so an oversized upload could get its connection reset before `ApiExceptionHandler`'s clean 413
+response ever reached the client — `server.tomcat.max-swallow-size: 15MB` fixes that gap too, proven
+by `InputSizeLimitIntegrationTest` asserting a real Problem Details body, not a stack trace or a
+broken connection, for both limits.
+
+*Mitigations (planned):* rate limiting per endpoint; cost metrics with alerting thresholds; a page
+or chunk-count limit on an ingested document (today's size limit bounds bytes in, not how large the
+resulting document ends up after parsing — not the same thing for a highly repetitive or
+adversarially-crafted file). `DocumentController.upload` still reads the whole file into memory via
+`file.getBytes()` rather than streaming it into `IngestionService`, a deliberate deferral, not an
+oversight: at today's 10 MB bound that's safe, and worth revisiting only if the multipart limit is
+ever raised significantly (see `DocumentController`'s own comment on this).
 
 *Mitigations (planned):* per-request and per-conversation token budgets; context window enforced at
 build time, not discovered at the API; rate limiting per endpoint; cost metrics with alerting
