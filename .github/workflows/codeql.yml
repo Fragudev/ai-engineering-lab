@@ -32,7 +32,7 @@ jobs:
       # (see ci.yml's Trivy step comment for why), verified via `git ls-remote --tags` against
       # github/codeql-action, not guessed.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@e4d2851c4593439ac10bdcd57c5b06cac73b4775 # v3.37.8
+        uses: github/codeql-action/init@42947a340483f03ba47bb1a039b2c519aab3df85 # v3.37.8
         with:
           languages: java-kotlin
 
