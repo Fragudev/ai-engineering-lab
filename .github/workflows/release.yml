@@ -44,7 +44,7 @@ jobs:
       # tag or GitHub Release. A tag push does the real thing below.
       - name: Upload SBOM as a workflow artifact (dry run)
         if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: |
