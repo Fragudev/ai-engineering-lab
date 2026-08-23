@@ -162,12 +162,34 @@ identifiers and counts, not content; error messages never echo prompt content to
 
 ### T8 — Insecure output handling
 
-Model output rendered in the browser containing script, or written to a downstream sink without
-escaping.
+Model output, or any other untrusted string, rendered in the browser containing script, or written
+to a downstream sink without escaping.
 
-*Mitigations (planned):* Markdown rendered through a sanitising renderer with HTML disabled; strict
-Content-Security-Policy; model output never passed to `eval`, a template engine, a shell or a SQL
-query; structured output validated against its schema before use.
+**Completed in Phase 8's post-roadmap review.** The concrete path this was actually found through
+wasn't model output but a document title: `DocumentController.upload` stores a filename or
+user-supplied title verbatim, and the static UI's document list built it into the page with
+`innerHTML` — a real, exploitable stored-XSS path (post-roadmap review finding S1, issue #21), not
+a hypothetical one this section was written to pre-empt.
+
+*Mitigations:* every value the static UI renders — chat bubbles, usage metadata, document titles
+and job error messages — is written via `createElement`/`textContent` (`app.js`), never `innerHTML`;
+no code path in the shipped script parses an untrusted string as markup. A strict
+`Content-Security-Policy` header is set on every response (`SecurityHeadersFilter`): `script-src
+'self'` and `style-src 'self'` with no `unsafe-inline`/`unsafe-eval` anywhere, plus `object-src
+'none'` and `frame-ancestors 'none'` — the UI's script and stylesheet were moved out of inline
+`<script>`/`<style>` blocks into `app.js`/`app.css` specifically so this policy is enforceable
+rather than decorative. Two regression tests pin both halves: `StaticUiXssRegressionTest` asserts
+the shipped script never reintroduces `innerHTML`, and `DocumentXssRegressionTest` asserts the CSP
+header's exact directives and that a hostile title (`<img src=x onerror=...>`) still round-trips
+through the API unmangled — proving the app doesn't rely on fragile server-side sanitization for
+this, only on the client never treating the value as markup.
+
+*Mitigations (planned):* the UI renders chat responses as plain text, not Markdown, so a sanitising
+Markdown renderer with HTML disabled remains unbuilt — required if Markdown rendering is ever added,
+not before; structured output validated against its schema before use (today only tool-call
+arguments get this, via `SchemaValidator`, T3 — general structured output does not). Model output is
+never passed to `eval`, a template engine, a shell, or a SQL query anywhere in this codebase today;
+that's an invariant to preserve as the codebase grows, not an active guard.
 
 ### T9 — Malicious or compromised external MCP server
 
