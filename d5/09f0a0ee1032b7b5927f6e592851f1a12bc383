@@ -1,0 +1,53 @@
+.github/dependabot.yml
+  s_f6c2719e97e037::t_68c3bc78822605 1-19
+.github/workflows/ci.yml
+  s_f6c2719e97e037::t_cc14734bbdda4c 40-115
+.github/workflows/codeql.yml
+  s_f6c2719e97e037::t_dfa1fa569b3002 1-47
+.github/workflows/release.yml
+  s_f6c2719e97e037::t_af0fd8e5d162e9 1-63
+DEMO.md
+  s_f6c2719e97e037::t_2f712d779d64f5 1-61
+app/Dockerfile
+  s_f6c2719e97e037::t_6fcb2f5e2eb89f 4-6,11
+docs/adr/0012-observability-conventions.md
+  s_f6c2719e97e037::t_f6d51e2ed7b42a 1-129
+docs/adr/README.md
+  s_f6c2719e97e037::t_3cff7872dfb017 25,32
+docs/architecture.md
+  s_f6c2719e97e037::t_854e5bd5f20264 6-8,531-610,625,645-647,649-655,657-659,661-666,673-681,758-760,772,776
+docs/threat-model.md
+  s_f6c2719e97e037::t_07c9a67dad55dd 6-8,69-74,133-140,200,202-203,205-206,213-222
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioChatProvider.java
+  s_f6c2719e97e037::t_2da3facaa5843c 112,115
+modules/rag/pom.xml
+  s_f6c2719e97e037::t_42f139596430ef 39-42
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagPipeline.java
+  s_f6c2719e97e037::t_1218d6203d250a 9,18-19,51,59-60,67,74,122,126-141
+pom.xml
+  s_f6c2719e97e037::t_3ed0c91013db7a 44-45,174-200
+scripts/seed.sh
+  s_f6c2719e97e037::t_518613a0392c0d 46-49
+README.md
+  s_f6c2719e97e037::t_9d0b4a933a7ad4 3-5,12-17,187-188,191,208-220
+docs/roadmap.md
+  s_f6c2719e97e037::t_e9a77525fd074a 20,529-533,536-631
+scripts/demo.sh
+  s_f6c2719e97e037::t_7047c6524633f5 1-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d509f0a0ee1032b7b5927f6e592851f1a12bc383",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
