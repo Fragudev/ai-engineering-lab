@@ -109,10 +109,10 @@ final class LmStudioChatProvider implements ChatProvider {
         observation
                 .lowCardinalityKeyValue("gen_ai.response.model", response.model())
                 .highCardinalityKeyValue(
-                        "gen_ai.usage.prompt_tokens",
+                        "gen_ai.usage.input_tokens",
                         String.valueOf(response.usage().promptTokens()))
                 .highCardinalityKeyValue(
-                        "gen_ai.usage.completion_tokens",
+                        "gen_ai.usage.output_tokens",
                         String.valueOf(response.usage().completionTokens()));
     }
 

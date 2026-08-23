@@ -17,7 +17,7 @@ than a step toward some distant completion.
 | [5](#phase-5--tools) | Tools | Complete |
 | [6](#phase-6--agentic-workflow) | Agentic workflow | Complete |
 | [7](#phase-7--mcp) | MCP | Complete |
-| [8](#phase-8--hardening-and-presentation) | Hardening and presentation | Not started |
+| [8](#phase-8--hardening-and-presentation) | Hardening and presentation | In progress — latency measurement pending a live LM Studio run |
 
 ---
 
@@ -526,12 +526,154 @@ connection, matching `ai.tools.granted-scopes`'s existing single-user stance.
 Complete threat model, security scanning and SBOM, a measured latency baseline, sequence diagrams,
 the theoretical cloud deployment section, README polish, and a recorded demo.
 
+**ADR:** [0012](adr/0012-observability-conventions.md) observability conventions and GenAI semantic
+attributes — documents the real `gen_ai.*`/`rag.*` span-attribute namespaces this project actually
+uses (not the ones earlier docs merely claimed), and the metric-naming pattern Phases 5 and 6
+independently converged on.
+
 **Acceptance**
 
-- Dependency, container and secret scanning run in CI.
-- A CycloneDX SBOM is published with releases.
-- Latency figures in the documentation come from a reproducible measurement, with hardware recorded.
-- A technical reviewer understands the system in five minutes without opening a source file.
+- [x] Dependency, container and secret scanning run in CI. `.github/workflows/ci.yml` gained a
+      `security` job: `gitleaks/gitleaks-action` (secrets), `actions/dependency-review-action`
+      (dependency scanning on PRs, first-party, zero-config) plus `dependency-check-maven` wired in
+      (the tool `docs/threat-model.md` already named), and Trivy scanning the exact container image
+      the `build` job produces. `.github/workflows/codeql.yml` runs CodeQL on push, PR and weekly.
+      Every third-party action is pinned to a commit SHA, not a tag — verified via `git ls-remote
+      --tags` against the real upstream repos, not guessed — motivated by a real, current incident:
+      `aquasecurity/trivy-action`, one of the tools this project itself now uses, had 75 of 76 tags
+      force-pushed to credential-stealing code for ~12 hours in March 2026 (CVE-2026-33634).
+- [x] A CycloneDX SBOM is published with releases. New `.github/workflows/release.yml`
+      (`on: push: tags: v*`, plus `workflow_dispatch` for a dry run) generates an aggregate SBOM via
+      `cyclonedx-maven-plugin:2.9.2:makeAggregateBom` and attaches `bom.json`/`bom.xml` to the GitHub
+      Release via `gh release upload`. The SBOM-generation step is verified for real (see the scope
+      note below); the workflow's full run, including the release-creation/upload step, is not yet —
+      a real GitHub platform constraint, not a shortcut, explained below. No container registry push
+      — scoped out, matching the
+      roadmap's own "deliberately deferred" stance on infrastructure the project doesn't need to
+      demonstrate configuration for.
+- [ ] Latency figures in the documentation come from a reproducible measurement, with hardware
+      recorded. The tooling for this was already complete since Phase 4 (`evaluation.ReportWriter`,
+      `scripts/eval.sh --hardware=`) — what's missing is a real run against the `lmstudio` profile,
+      which needs LM Studio running on this machine with both models loaded. It was not running at
+      any point during this phase's work (`curl localhost:1234/v1/models` → connection refused,
+      checked twice, hours apart). Real hardware for when this runs: **Apple M4 Pro, 48 GB RAM**
+      (`system_profiler SPHardwareDataType`). Left genuinely incomplete rather than fabricated or
+      backfilled from the existing `recorded`-profile report, whose own limitations section already
+      states its numbers are harness overhead, not model latency.
+- [x] A technical reviewer understands the system in five minutes without opening a source file.
+      `README.md`'s status banner was four phases stale ("Phases 0–3 complete" while the capability
+      table below it already marked Phases 0–7 done) — fixed, plus CI/license badges, a Demo section,
+      and a repository-layout fix (it referenced `reindex`/`demo` scripts under `scripts/`; `reindex`
+      doesn't exist anywhere in the roadmap and was removed, `demo` now does exist for real).
+      Two new sequence diagrams in `docs/architecture.md` §10 cover the two hardest-to-follow flows
+      added since the two existing diagrams were written: tool calling with confirmation (Phase 5)
+      and the MCP handshake (Phase 7).
+
+**A recorded demo, honestly scoped.** Nothing in this environment can capture or encode an actual
+video file. What exists instead: `scripts/demo.sh`, a real, reproducible script that drives every
+capability — plain chat, ingestion, RAG with citations, tool calling through the confirmation gate,
+MCP (gracefully skipped with an explanatory message if the self-connect override isn't active), and
+a full six-stage agentic workflow run — against a live instance over the same HTTP API a human would
+use, plus `DEMO.md` as narration to read while running or recording it yourself. Run live against a
+fresh `docker compose` deployment (`recorded` profile) during this phase: all four sections completed
+successfully, including a real `citation` event (verified the exact chunk/document ids and quoted
+spans in the SSE payload) and a full workflow run where all six stages (`plan-sub-queries`,
+`retrieve`, `extract-per-source`, `synthesise`, `self-check`, `answer`) reported `SUCCEEDED`.
+
+**Three real bugs found only by running this phase's own new script against a live app, not by
+planning:**
+
+1. **`upload_and_wait`'s (and `scripts/seed.sh`'s pre-existing) `grep -i '^location:' | sed | tr`
+   pipeline silently killed the script whenever a document was already indexed** (a `200` response
+   with no `Location` header, the documented dedup case) — `grep` exits `1` on no match, and under
+   `set -euo pipefail`, that terminates the script *before* reaching the `if [ -z "${location}" ]`
+   branch written specifically to handle it. Confirmed live: the second `demo.sh` run against a
+   database that already had the demo document indexed died silently mid-script with no error
+   message. Fixed in both scripts by wrapping the `grep` in `{ grep ... || true; }`. The identical
+   bug in `scripts/demo.sh`'s tool-confirmation polling loop (`grep -o '"callId"...'` on an SSE
+   stream that hasn't emitted the field yet) would have killed the script on its very first polling
+   iteration, every time — fixed the same way. `scripts/seed.sh` had carried this bug, unexercised,
+   since Phase 4.
+2. **`cyclonedx-maven-plugin`'s `makeAggregateBom` goal binds itself to the `package` phase even with
+   no `<executions>` block declared** — confirmed via a real `./mvnw verify` run that produced a
+   `*-cyclonedx.json` in every module's `target/` unprompted, contradicting the plan to invoke it only
+   explicitly from `release.yml`. Fixed with the standard Maven override
+   (`<execution><id>default</id><phase>none</phase></execution>`), confirmed by re-running
+   `./mvnw package` and seeing no SBOM output, then confirming the explicit
+   `./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.9.2:makeAggregateBom` invocation still works.
+3. **Replacing the `docker compose`-managed app container with a bare `docker run` (even on the same
+   Docker network) broke Kafka consumer group formation** — repeated `Node ... disconnected` /
+   `Rebootstrapping` cycles that never resolved. Not a product bug: `docker compose run`, which
+   preserves the compose-managed service DNS and dependency ordering, worked correctly on the first
+   try. Documented here because it's a real trap for anyone reproducing this phase's own live
+   verification steps by hand.
+
+**Four more real findings, from the actual GitHub Actions run on this PR — not from local rehearsal,
+which had already passed clean:**
+
+4. **`gitleaks/gitleaks-action` failed with `"failed to scan Git repository" error="stderr is not
+   empty"`**, not an actual secret — it computes a commit-range diff and `actions/checkout`'s default
+   `fetch-depth: 1` doesn't have the base commit available to diff against. Fixed with
+   `fetch-depth: 0` on the `security` job's checkout.
+5. **`actions/dependency-review-action` failed outright**: `"Dependency review is not supported on
+   this repository. Please ensure that Dependency graph is enabled"` — a repository setting (Settings
+   → Security) only the repository owner can toggle, not something this workflow can enable itself.
+   Given `continue-on-error: true`; the prerequisite is documented in `docs/threat-model.md` §5 rather
+   than left to fail silently every run.
+6. **The container image scan found 9 real HIGH-severity CVEs**: `postgresql-42.7.11.jar`
+   (CVE-2026-54291, a SCRAM-SHA-256-PLUS channel-binding downgrade, fixed in 42.7.12) and 8 in
+   `usr/bin/pebble`, part of `eclipse-temurin`'s own Ubuntu base OS layer. Fixed the one within this
+   project's control by pinning `org.postgresql:postgresql` to 42.7.13 in `pom.xml` (overriding
+   Spring Boot's managed 42.7.11). The other 8 are upstream-owned and unfixable here short of a base
+   image change — documented in a new `.trivyignore` and `docs/threat-model.md` §6's Accepted risk
+   table, the same reasoning already applied to every other accepted item there.
+7. **Even after fixing/ignoring every real finding, the Trivy step kept exiting 1** — a documented
+   `trivy-action` bug (upstream issues #228, #309, #442): combining `format: sarif` with `exit-code`
+   in one invocation doesn't reliably respect `severity`/`trivyignores` for the pass/fail decision,
+   only for the report content, confirmed live (a run with a SARIF showing 0 error-level results and
+   `.trivyignore` visibly loaded still failed). Fixed by splitting into two separate Trivy invocations
+   in `ci.yml` — a `format: table` run that actually gates the build, and a separate `format: sarif`
+   run purely to produce the file the Security-tab upload consumes — `trivy-action`'s own documented
+   workaround.
+
+Every one of the seven bugs above was found by actually running something — a script, a local build,
+a real GitHub Actions job — never by inspection alone. Several (5, 6, 7) could only have been found by
+pushing to a real PR: no local rehearsal reproduces GitHub's own repository settings, its shallow
+default checkout, or `trivy-action`'s specific SARIF-mode behavior.
+
+**A second, larger documentation/reality gap found via direct `grep`, beyond what was planned:**
+`docs/architecture.md` §12 claimed Grafana dashboards were "provisioned from the repository" — none
+are; `infrastructure/` has no dashboard-provisioning files at all, and the `grafana/otel-lgtm`
+container in `docker-compose.yml` runs with zero custom config. Corrected to describe what's real
+(Grafana's own Explore view over Tempo/Loki/Prometheus) rather than either building dashboards this
+phase didn't scope for or leaving the claim in place. The same section's Prometheus metrics list
+named eight metrics that don't exist and omitted two (`workflow_run_total`,
+`workflow_step_duration_seconds`) that do — corrected; see [ADR-0012](adr/0012-observability-conventions.md).
+`docs/architecture.md`'s own top-of-document status line ("design. No implementation yet.") had never
+been updated since Phase 0 — fixed. The risks table (§16) named a `reindex.sh` script and CI
+"documentation check" that don't exist — corrected to describe the real gap rather than the intended
+one.
+
+Scope reductions, named rather than silently dropped:
+
+- `dependency-check-maven` needs an `NVD_API_KEY` repository secret for full-speed scanning — the
+  workflow runs without one, just slower/best-effort; adding the secret is a step only the repository
+  owner can take.
+- Eight previously-claimed-but-unbuilt Prometheus metrics stay unbuilt this phase — see ADR-0012's
+  Alternatives section for why.
+- Grafana dashboard provisioning is a real, now-honestly-documented gap, not built this phase.
+- `release.yml` itself has **not** been run on GitHub Actions yet — `gh workflow run release.yml`
+  returned a 404, because GitHub's `workflow_dispatch` API only recognizes a workflow once its file
+  exists on the repository's default branch, which `phase-8/hardening` isn't yet. The exact same real
+  platform constraint Phase 4 hit for `nightly-eval.yml` (see that phase's own note above) —
+  recognized this time, not rediscovered as a surprise, but still not something achievable before this
+  PR merges. What *is* verified: the SBOM-generation step in isolation
+  (`./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.9.2:makeAggregateBom` run locally, producing a real
+  `bom.json`/`bom.xml`) and that it does *not* run on a normal `mvnw verify`/`package` (the plugin's
+  own intrinsic phase-binding bug, fixed in `pom.xml`, see below). The full workflow — including the
+  `gh release create`/upload step — needs a real run once this merges to `main`, either via
+  `workflow_dispatch` or an actual tag push (the latter is a publishing action, needing separate
+  confirmation before it happens).
 
 ---
 

@@ -1,14 +1,20 @@
 # AI Engineering Lab
 
+[![CI](https://github.com/Fragudev/ai-engineering-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Fragudev/ai-engineering-lab/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 A production-grade reference application for AI engineering on the JVM: hybrid RAG over pgvector,
 event-driven ingestion on Kafka, controlled tool calling, MCP, agentic workflows, end-to-end
 OpenTelemetry tracing, and an evaluation harness that produces numbers instead of adjectives.
 
 Runs entirely on your own machine against a local model server. No API key required.
 
-> **Status: Phases 0–3 complete** (foundations, chat, async ingestion, RAG). Every capability below
-> is marked with its current state, and nothing is claimed to work until it does. See
-> [`docs/roadmap.md`](docs/roadmap.md) for the phase plan and what each phase actually verified.
+> **Status: Phases 0–7 complete; Phase 8 (hardening) in progress** — CI security scanning, SBOM
+> releases and documentation are done, a real measured latency baseline is not yet, honestly, still
+> pending a live model-server run. Every capability below is marked with its current state, and
+> nothing is claimed to work until it does. See [`docs/roadmap.md`](docs/roadmap.md) for the phase
+> plan and what each phase actually verified — including, in Phase 8, the doc/reality gaps that
+> phase's own review found and corrected.
 
 ---
 
@@ -178,10 +184,11 @@ modules/              domain modules with enforced boundaries
   evaluation/           datasets, runners, metrics
   platform/             observability, security, resilience, idempotency
 docs/                 architecture, ADRs, threat model, evaluation methodology
-infrastructure/       docker-compose, Grafana dashboards, OTel config
+infrastructure/       docker-compose, OTel config (see docs/architecture.md #12 for what
+                         Grafana shows today vs. what's still a named gap)
 corpus/               demo documents and license attribution
 eval/                 golden dataset and generated reports
-scripts/              bootstrap, seed, reindex, eval, demo
+scripts/              bootstrap, seed, fetch-corpus, eval, demo (see DEMO.md)
 ```
 
 ---
@@ -198,6 +205,19 @@ scripts/              bootstrap, seed, reindex, eval, demo
 | [Operations](docs/operations.md) | Runbook, what to look at when something breaks |
 | [Events](docs/events/) | Topic contracts and JSON Schemas |
 | [AGENTS.md](AGENTS.md) | Conventions and constraints for contributors, human or agent |
+| [DEMO.md](DEMO.md) | A scripted, reproducible walkthrough of every capability — run it, or record yourself running it |
+
+---
+
+## Demo
+
+[`scripts/demo.sh`](scripts/demo.sh) drives every capability above against a real running instance
+over the same HTTP API a human would use — plain chat, ingestion with a real Kafka pipeline, RAG with
+citations, tool calling through the confirmation gate, MCP, and a full agentic workflow run. See
+[DEMO.md](DEMO.md) for how to run it and narration to read alongside. This is the "recorded demo"
+this project's roadmap calls for, in the form this environment can actually produce: nothing here can
+capture and encode an actual video file, so this is real, reproducible automation instead of one —
+named plainly rather than presented as something it isn't.
 
 ---
 
