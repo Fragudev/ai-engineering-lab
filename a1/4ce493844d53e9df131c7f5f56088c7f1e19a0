@@ -1,0 +1,27 @@
+eval/reports/2026-08-23-dense-only-hybrid-hybrid-rerank.json
+  s_f6c2719e97e037::t_a87253a6c9a750 1-87
+eval/reports/2026-08-23-dense-only-hybrid-hybrid-rerank.md
+  s_f6c2719e97e037::t_62962441b2e800 1-22
+README.md
+  s_f6c2719e97e037::t_b1b07cdbf9464c 12,231-237
+docs/ai-evaluation.md
+  s_f6c2719e97e037::t_6af92078ab354e 167-194
+docs/roadmap.md
+  s_f6c2719e97e037::t_201cc10b144f9e 20,554-588
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a14ce493844d53e9df131c7f5f56088c7f1e19a0",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
