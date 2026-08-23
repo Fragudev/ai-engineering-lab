@@ -104,17 +104,32 @@ public class ToolCallingChatService {
         state.toolCallsMade++;
         state.history.add(ChatMessage.assistant(toEnvelope(call)));
 
+        Flux<ToolChatChunk> callEvent =
+                Flux.just(ToolChatChunk.toolCall(new ToolCallRequest(callId, call.name(), call.argumentsJson())));
+
         Optional<ToolDefinition> definition = allTools.stream()
                 .filter(candidate -> candidate.name().equals(call.name()))
                 .findFirst();
-        boolean requiresConfirmation =
-                definition.isPresent() && (state.untrusted || definition.get().alwaysRequiresConfirmation());
-        if (definition.isPresent() && definition.get().introducesRetrievedContent()) {
-            state.untrusted = true;
+        if (definition.isEmpty()) {
+            // Fail closed (docs/threat-model.md T2/T9), not open: allTools — the list this turn was
+            // actually offered and gated against — is the sole source of truth for whether a call may
+            // reach the executor. A name absent here must never execute, even if ToolInvoker's global
+            // ToolRegistry still knows it; that gap is exactly how a call could dodge confirmation.
+            ToolCallResult unknown = new ToolCallResult(
+                    callId,
+                    call.name(),
+                    call.argumentsJson(),
+                    ToolCallOutcome.ERROR,
+                    null,
+                    "Unknown tool for this turn: '%s'".formatted(call.name()),
+                    0);
+            return callEvent.concatWith(recordResult(unknown, state));
         }
 
-        Flux<ToolChatChunk> callEvent =
-                Flux.just(ToolChatChunk.toolCall(new ToolCallRequest(callId, call.name(), call.argumentsJson())));
+        boolean requiresConfirmation = state.untrusted || definition.get().alwaysRequiresConfirmation();
+        if (definition.get().introducesRetrievedContent()) {
+            state.untrusted = true;
+        }
 
         Mono<ToolCallResult> resultMono;
         if (requiresConfirmation) {
@@ -146,12 +161,13 @@ public class ToolCallingChatService {
             resultMono = toolInvoker.invokeForChat(callId, call.name(), call.argumentsJson(), executionContext(state));
         }
 
-        return callEvent.concatWith(resultMono.flatMapMany(result -> {
-            state.invocations.add(result);
-            state.history.add(
-                    new ChatMessage(io.github.fragudev.ailab.aiprovider.ChatRole.TOOL, toResultPayload(result)));
-            return Flux.just(ToolChatChunk.toolResult(result));
-        }));
+        return callEvent.concatWith(resultMono.flatMapMany(result -> recordResult(result, state)));
+    }
+
+    private Flux<ToolChatChunk> recordResult(ToolCallResult result, LoopState state) {
+        state.invocations.add(result);
+        state.history.add(new ChatMessage(io.github.fragudev.ailab.aiprovider.ChatRole.TOOL, toResultPayload(result)));
+        return Flux.just(ToolChatChunk.toolResult(result));
     }
 
     private ToolExecutionContext executionContext(LoopState state) {

@@ -59,6 +59,26 @@ the turn reads the current value, not the origin the turn started with. So: a pl
 *first* call to knowledge-base-search is correctly ungated (nothing untrusted yet); its *second*
 tool call, of any kind, is gated, because the model's context now contains retrieved content.
 
+**The gate and the executor must resolve a tool call from the same set — enforced, not assumed.**
+`handleToolCall` looks up a call's `ToolDefinition` in `allTools`, the exact list `stream()` was
+called with, and that lookup decides both whether confirmation is required *and* whether the call
+may reach `ToolInvoker` at all: `definition.isEmpty()` returns an `ERROR` result immediately,
+fail-closed, never falling through to `toolInvoker.invokeForChat`. `ToolInvoker` also resolves the
+tool it actually executes from a second, wider set — the mutable, global `ToolRegistry` (`register()`
+exists since Phase 7, for runtime MCP discovery). Nothing currently constructs those two sets
+differently — both `ConversationService` and `RagPipeline` pass `toolRegistry.definitions()`
+straight through as `allTools` — but that's a property of today's callers, not something the code
+enforced, and a discrepancy would have failed open: a name absent from `allTools` but present in the
+registry used to make `requiresConfirmation` false by the same short-circuit that should have
+blocked it, sending the call straight to the executor with no gate at all (post-roadmap review S2,
+issue #22). The fix makes `allTools` the sole source of truth for *whether a call is reachable*, not
+just how it's gated — `ToolInvoker` resolving from the registry is now redundant-but-harmless
+defense in depth, never the deciding check. Concretely: any tool registered after `stream()` already
+captured `allTools` — an MCP server discovered mid-turn — cannot execute for that turn at all, gated
+or not, until a later turn's `allTools` includes it. That's a stricter reading than "gated on every
+call" (`ToolDefinition.alwaysRequiresConfirmation`, above) for exactly the class of tool T9 is
+written for, and it's covered by `ToolCallingChatServiceTest.unknownToolForThisTurnFailsClosedInsteadOfExecuting`.
+
 **Confirmation mechanics.** `internal.PendingConfirmationRegistry` holds a
 `Map<UUID, Sinks.One<Boolean>>` — `await(callId, timeout)` registers a sink and resolves to `false`
 on timeout, distinct from a tool's own execution timeout; a new
