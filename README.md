@@ -126,8 +126,8 @@ providers is a configuration change, not a refactor — see
 
 ## Getting started
 
-> Available from Phase 0. The commands below describe the intended experience and are the
-> acceptance criteria for that phase.
+The commands below are the actual, live-verified path — run end to end repeatedly across all 9
+phases, most recently against a real LM Studio instance in Phase 8 (`docs/roadmap.md`).
 
 **Prerequisites**
 
@@ -158,6 +158,13 @@ docker compose -f infrastructure/docker-compose.yml up -d
 ```
 
 Then open <http://localhost:8080>. Grafana is on `:3000`, Kafka UI on `:8081`.
+
+Running a large reasoning model (20B+ parameters, or anything that emits `reasoning_content`)? The
+default 60s provider timeout is tuned for smaller instruct models and is too short for real
+RAG/reranking prompts against a large reasoning model — override it with
+`AI_PROVIDER_LMSTUDIO_TIMEOUT=300s` (or higher). Found live in Phase 8 against a 27B model, where a
+trivial prompt took ~3s but real prompts routinely exceeded 60s; see `docs/roadmap.md`'s Phase 8
+section for the full story, including a real retrieval-abstention threshold finding from the same run.
 
 Prefer not to install LM Studio? The `recorded` provider profile replays captured fixtures, so the
 application is fully explorable without a model server. It is also what CI uses — see
