@@ -47,14 +47,30 @@ jobs:
       # .trivyignore documents the specific, base-image-owned CVEs this project can't fix directly
       # (found by this exact scan during Phase 8's own verification) — everything else still fails
       # the build.
-      - name: Scan container image (Trivy)
+      #
+      # Two separate invocations, not one — a known trivy-action quirk (aquasecurity/trivy-action#228,
+      # #309, #442): when `format: sarif` and `exit-code` are combined in the same run, the pass/fail
+      # decision doesn't reliably respect `severity`/`trivyignores` the way the SARIF report itself
+      # does. Confirmed live: a run with a clean SARIF (0 error-level results, `.trivyignore` visibly
+      # loaded and applied) still exited 1. Splitting into a table-format run that gates the build and
+      # a separate sarif-format run purely for the Security-tab upload is trivy-action's own
+      # documented workaround for this.
+      - name: Scan container image (Trivy) — gate the build
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ai-engineering-lab-app:ci
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+      - name: Scan container image (Trivy) — produce SARIF for the Security tab
+        if: always()
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: ai-engineering-lab-app:ci
           format: sarif
           output: trivy-image-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"
           trivyignores: .trivyignore
 
       - name: Upload Trivy image scan results
