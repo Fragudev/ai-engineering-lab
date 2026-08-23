@@ -72,8 +72,14 @@ jobs:
       security-events: write
       pull-requests: write
     steps:
+      # fetch-depth: 0 (full history), not actions/checkout's default shallow depth-1 clone — found
+      # via a real failure: gitleaks walks a commit range for its scan and a shallow clone doesn't
+      # have the base commit, so it errors ("failed to scan Git repository", stderr not empty)
+      # instead of scanning.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
