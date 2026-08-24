@@ -1,0 +1,43 @@
+docs/adr/0009-tool-design-and-security-boundaries.md
+  s_8ca842344072f2::t_a0d5edb24328df 83-86,94-111
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/internal/PendingConfirmationRegistry.java
+  s_f6c2719e97e037::t_6841052213a23b 21-25,33-47,49-52
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/ToolCallingChatServiceTest.java
+  s_8ca842344072f2::t_58cd77f50078f0 46,109,205,255-261,269-279,283
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/internal/PendingConfirmationRegistryTest.java
+  s_8ca842344072f2::t_cbc8decc2dcdd5 7,14-15,19-21,33-35,47,62-73,89-128
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/internal/ToolsPropertiesValidationTest.java
+  s_8ca842344072f2::t_03722c867aa711 43-44
+app/src/main/resources/application.yml
+  s_f6c2719e97e037::t_157210bf3f3f71 90-93
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/ToolCallingChatService.java
+  s_f6c2719e97e037::t_536a02d501cd7b 19,153,198-217
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/internal/ToolsProperties.java
+  s_f6c2719e97e037::t_c39510abf58b1f 19-22,31-32
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/internal/ScopeAuthorizerTest.java
+  s_f6c2719e97e037::t_3f15828cc9d0e2 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "57994a63c8d1e8673343fd2e99dbb9a066a152b6",
+  "prompts": {},
+  "sessions": {
+    "s_8ca842344072f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4db8a879-00ae-4699-b479-6c9220e502b3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
