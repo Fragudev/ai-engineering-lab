@@ -1,7 +1,11 @@
 package io.github.fragudev.ailab.workflow.internal;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * @param maxSubQueries caps {@code plan-sub-queries}' fan-out; a reasoned starting bound, not
@@ -18,12 +22,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     a reasoned starting bound, not tuned against any dataset (AGENTS.md rule 2, post-roadmap
  *     review B1)
  */
+@Validated
 @ConfigurationProperties(prefix = "ai.workflow")
 public record WorkflowsProperties(
         boolean enabled,
-        int maxSubQueries,
-        int maxSourcesToExtract,
-        int maxLlmCallsPerRun,
-        int stageRetryAttempts,
-        Duration stepTimeout,
-        Duration retryBaseDelay) {}
+        @Positive int maxSubQueries,
+        @Positive int maxSourcesToExtract,
+        @Positive int maxLlmCallsPerRun,
+        @PositiveOrZero int stageRetryAttempts,
+        @NotNull Duration stepTimeout,
+        @NotNull Duration retryBaseDelay) {}

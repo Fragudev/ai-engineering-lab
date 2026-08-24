@@ -1,7 +1,11 @@
 package io.github.fragudev.ailab.mcp.internal;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * Only the client side is configured here — the server side (exposing this application's own tool
@@ -15,8 +19,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param client see {@link Client}
  */
+@Validated
 @ConfigurationProperties(prefix = "ai.mcp")
-public record McpProperties(Client client) {
+public record McpProperties(@NotNull @Valid Client client) {
 
     /**
      * @param requiredScope stands in for "the one authenticated user's permissions" for every
@@ -24,5 +29,6 @@ public record McpProperties(Client client) {
      *     {@code ai.tools.granted-scopes}
      * @param defaultTimeout the timeout given to every MCP-client-sourced {@code ToolDefinition}
      */
-    public record Client(String requiredScope, Duration defaultTimeout) {}
+    public record Client(
+            @NotBlank String requiredScope, @NotNull Duration defaultTimeout) {}
 }
