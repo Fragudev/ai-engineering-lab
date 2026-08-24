@@ -1,0 +1,27 @@
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/FakeWorkflowRunRepository.java
+  s_f6c2719e97e037::t_fce06aef7c2a88 1-187
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/StageRunnerTest.java
+  s_f6c2719e97e037::t_7e4ec5b456e40e 8,34-74
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/WorkflowResumerTest.java
+  s_f6c2719e97e037::t_df85de0081e79b 1-88
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/DirectExecutorService.java
+  s_f6c2719e97e037::t_6d8cabd4359fab 1-44
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/FakeDocumentationResearchEngine.java
+  s_f6c2719e97e037::t_1a1e1d2cb49b24 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9b5d6df9ad0a3a4c458313ecec603630f5608324",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
