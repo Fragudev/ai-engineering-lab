@@ -617,6 +617,7 @@ sequenceDiagram
 | Unit | JUnit 5, AssertJ | Domain logic, chunking, RRF fusion, token budgeting |
 | Architecture | ArchUnit, Spring Modulith | Module boundaries, dependency rules, layering |
 | Integration | Testcontainers (pgvector, Kafka) | Repositories, consumers, migrations |
+| End-to-end | `DemoJourneyEndToEndTest`, tagged `e2e`, own CI job (post-roadmap review issue #34) | The exact journey `scripts/demo.sh` narrates by hand, chained in one flow: plain chat → real async ingestion → RAG answer with a citation → a confirmed tool call over a real MCP handshake → a persisted six-stage workflow run |
 | API contract | OpenAPI validator, MockMvc | Implementation conforms to the published spec |
 | Provider | WireMock + fixtures | Streaming, timeouts, 429s, malformed JSON, invalid tool calls |
 | Failure path | Testcontainers + Toxiproxy | Database down, Kafka down, slow model, retry exhaustion → DLT |
