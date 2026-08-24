@@ -623,11 +623,33 @@ sequenceDiagram
 | AI evaluation | `evaluation` module + `scripts/eval.sh` (custom runner, not a tagged test suite) | Retrieval and answer quality |
 | Static | Spotless, Error Prone, NullAway | Formatting, correctness, nullability |
 | Security | OWASP Dependency-Check, Trivy, CodeQL, gitleaks — all real CI jobs since Phase 8 (`.github/workflows/ci.yml`, `codeql.yml`) | Dependencies, images, code, secrets |
+| Coverage | JaCoCo, aggregated across the reactor via `app`'s `report-aggregate` (post-roadmap review issue #33) | 88.0% instruction coverage measured live 2026-08-24 (10,257/11,651 instructions; `app/target/site/jacoco-aggregate/`) |
 
 **Failure-path tests are the differentiating layer.** Everyone tests the happy path. Demonstrating
 that a document whose embedding stage fails three times lands in the dead-letter topic with its job
 in `FAILED`, a populated `last_error`, and a complete trace showing all three attempts — that is the
-part worth reviewing.
+part worth reviewing. `IngestionFailureIntegrationTest` asserts all of it directly, including the
+message actually landing on `ingestion.chunks.created.v1.dlt` (issue #32) — not merely that retries
+were exhausted.
+
+**The 88.0% coverage figure leans heavily on integration tests, not per-module unit tests** —
+verified rather than assumed: `ingestion`, `shared`, `knowledge`, `rag`, `conversation` and `platform`
+had zero test files of their own before the post-roadmap review (issues #30–#32 added real unit
+coverage for the pure-function and previously-untested pieces, but most of these modules' remaining
+coverage still comes from `app`'s own container-backed integration tests exercising them end to end).
+That's a real number, not an invented one, but it measures "this code path executed during some
+test," not "this code path has focused, fast, unit-level coverage" — the same distinction
+docs/ai-evaluation.md draws between a metric passing and a metric meaning what it's assumed to mean.
+
+**CI enforces a floor, but on a narrower bundle than the 88.0% headline figure — named plainly rather
+than silently overclaimed.** `jacoco:check` (unlike `report-aggregate`) doesn't walk the reactor to
+analyze sibling modules' bytecode; it only ever checks the current project's own compiled classes
+against its own execution data. Bound in `app/pom.xml`, it therefore enforces a floor on `app`'s own
+module specifically — measured live at 79.95% (1,619/2,025 instructions), well below the reactor
+aggregate because most non-`app` modules' code is only exercised later, during `app`'s own integration
+tests, which `app`'s own `jacoco.exec` never records. The threshold is set at 75%, a real margin below
+that specific measurement — not the 88.0% aggregate, which would silently stay green even if `app`'s
+own tests regressed badly as long as the rest of the reactor stayed covered.
 
 **CI never calls a live model.** The `recorded` provider profile replays versioned fixtures, which
 makes CI deterministic, free and offline. Real evaluation runs locally against LM Studio via
