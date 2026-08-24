@@ -4,6 +4,7 @@ import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
 import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
+import io.github.fragudev.ailab.aiprovider.LlmDegradationMetrics;
 import io.github.fragudev.ailab.knowledge.SearchResult;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,9 +32,11 @@ public class LlmReranker implements Reranker {
                     + "comma-separated list of the passage numbers, most relevant first. No other text.";
 
     private final ChatProvider chatProvider;
+    private final LlmDegradationMetrics degradationMetrics;
 
-    LlmReranker(ChatProvider chatProvider) {
+    LlmReranker(ChatProvider chatProvider, LlmDegradationMetrics degradationMetrics) {
         this.chatProvider = chatProvider;
+        this.degradationMetrics = degradationMetrics;
     }
 
     @Override
@@ -62,10 +65,16 @@ public class LlmReranker implements Reranker {
                             return Reranker.assignFinalRank(reordered);
                         },
                         fusedFallback,
-                        e -> log.warn("LLM reranking failed, falling back to fused order", e),
-                        content -> log.warn(
-                                "LLM reranking returned an unparsable ordering ('{}'), falling back to fused order",
-                                content))
+                        e -> {
+                            log.warn("LLM reranking failed, falling back to fused order", e);
+                            degradationMetrics.recordProviderFailure("llm-reranker", e);
+                        },
+                        content -> {
+                            log.warn(
+                                    "LLM reranking returned an unparsable ordering ('{}'), falling back to fused order",
+                                    content);
+                            degradationMetrics.recordParseFailure("llm-reranker");
+                        })
                 .value();
     }
 

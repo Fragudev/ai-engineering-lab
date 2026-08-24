@@ -4,6 +4,7 @@ import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
 import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
+import io.github.fragudev.ailab.aiprovider.LlmDegradationMetrics;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,9 +31,11 @@ public class LlmJudge {
     private static final Pattern SCORE_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)");
 
     private final ChatProvider chatProvider;
+    private final LlmDegradationMetrics degradationMetrics;
 
-    public LlmJudge(ChatProvider chatProvider) {
+    public LlmJudge(ChatProvider chatProvider, LlmDegradationMetrics degradationMetrics) {
         this.chatProvider = chatProvider;
+        this.degradationMetrics = degradationMetrics;
     }
 
     /** Both scores are normalized to [0, 1], or {@code null} if the judge call failed or returned
@@ -61,8 +64,14 @@ public class LlmJudge {
                             return matcher.find() ? Double.parseDouble(matcher.group(1)) : null;
                         },
                         null,
-                        e -> log.warn("LLM judge call failed", e),
-                        content -> log.warn("LLM judge returned an unparsable score ('{}')", content))
+                        e -> {
+                            log.warn("LLM judge call failed", e);
+                            degradationMetrics.recordProviderFailure("llm-judge", e);
+                        },
+                        content -> {
+                            log.warn("LLM judge returned an unparsable score ('{}')", content);
+                            degradationMetrics.recordParseFailure("llm-judge");
+                        })
                 .value();
     }
 

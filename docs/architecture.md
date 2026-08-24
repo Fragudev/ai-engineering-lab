@@ -693,6 +693,14 @@ project-defined namespace for the retrieval stage, which GenAI semconv doesn't c
 - `tool_invocation_total{tool, outcome}`, `tool_duration_seconds` (`tools.internal.ToolMetrics`, Phase 5)
 - `workflow_run_total{type, status}`, `workflow_step_duration_seconds{stage, status}`
   (`workflow.internal.WorkflowMetrics`, Phase 6)
+- `llm_degradation_total{component, reason}` (`aiprovider.LlmDegradationMetrics`, post-roadmap review
+  issue #37) — every graceful fallback across the five call-the-model-and-degrade sites
+  (`query-normalizer`, `llm-reranker`, `sub-query-planner`, `source-extractor`, `llm-judge`; issue #36's
+  shared `DegradingChatCall` helper is where each one hooks in), `reason` one of `timeout`,
+  `provider-unavailable`, `parse-failure`, or `provider-error` for anything else. Exists because a
+  `WARN` log line was the only signal when `LlmReranker` fell back to fused order on every single call
+  during Phase 8's live evaluation run — a complete, silent failure of a headline feature that would
+  have shown up immediately as a flat line at 100% with this counter in place.
 
 **Not yet built** — named plainly rather than left to look implemented: `rag_request_duration_seconds`,
 `llm_tokens_total`, `llm_cost_usd_total`, `ingestion_job_duration_seconds`, `ingestion_jobs_active`,

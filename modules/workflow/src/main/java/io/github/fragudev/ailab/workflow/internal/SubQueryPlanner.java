@@ -4,6 +4,7 @@ import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
 import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
+import io.github.fragudev.ailab.aiprovider.LlmDegradationMetrics;
 import java.math.BigDecimal;
 import java.util.List;
 import org.slf4j.Logger;
@@ -25,9 +26,11 @@ class SubQueryPlanner {
                     + "Respond with ONLY the sub-questions, one per line, no numbering or other text.";
 
     private final ChatProvider chatProvider;
+    private final LlmDegradationMetrics degradationMetrics;
 
-    SubQueryPlanner(ChatProvider chatProvider) {
+    SubQueryPlanner(ChatProvider chatProvider, LlmDegradationMetrics degradationMetrics) {
         this.chatProvider = chatProvider;
+        this.degradationMetrics = degradationMetrics;
     }
 
     PlanResult plan(String query, int maxSubQueries) {
@@ -46,8 +49,14 @@ class SubQueryPlanner {
                     return subQueries.isEmpty() ? null : subQueries;
                 },
                 List.of(query),
-                e -> log.warn("Sub-query planning failed, falling back to the original query", e),
-                content -> log.warn("Sub-query planning returned nothing usable, falling back to the original query"));
+                e -> {
+                    log.warn("Sub-query planning failed, falling back to the original query", e);
+                    degradationMetrics.recordProviderFailure("sub-query-planner", e);
+                },
+                content -> {
+                    log.warn("Sub-query planning returned nothing usable, falling back to the original query");
+                    degradationMetrics.recordParseFailure("sub-query-planner");
+                });
         return new PlanResult(outcome.value(), outcome.costUsd());
     }
 
