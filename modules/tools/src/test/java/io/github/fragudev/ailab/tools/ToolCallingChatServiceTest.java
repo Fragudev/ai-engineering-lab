@@ -43,7 +43,7 @@ class ToolCallingChatServiceTest {
     private static final ProviderCapabilities FALLBACK_CAPABILITIES = new ProviderCapabilities(false, false, 8192);
 
     private final ToolsProperties properties =
-            new ToolsProperties(true, List.of(), Duration.ofSeconds(5), Duration.ofSeconds(5), 3);
+            new ToolsProperties(true, List.of(), Duration.ofSeconds(5), Duration.ofSeconds(5), 3, 10);
 
     @Test
     void emptyToolsListIsAnUnmodifiedPassthrough() {
@@ -106,7 +106,7 @@ class ToolCallingChatServiceTest {
                 null,
                 null);
         ToolCallingChatService service =
-                new ToolCallingChatService(invoker, new PendingConfirmationRegistry(), properties);
+                new ToolCallingChatService(invoker, new PendingConfirmationRegistry(properties), properties);
 
         List<ToolChatChunk> chunks = service.stream(
                         provider, history("go"), List.of(decoyTool.definition()), ToolCallOrigin.PLAIN_CHAT, null)
@@ -202,7 +202,7 @@ class ToolCallingChatServiceTest {
         AtomicInteger secondExecutions = new AtomicInteger();
         Tool kbTool = fakeTool("kb-search", Set.of(), true, kbExecutions);
         Tool secondTool = fakeTool("second-tool", Set.of(), false, secondExecutions);
-        PendingConfirmationRegistry registry = new PendingConfirmationRegistry();
+        PendingConfirmationRegistry registry = new PendingConfirmationRegistry(properties);
         ScriptedChatProvider provider = new ScriptedChatProvider(
                 FALLBACK_CAPABILITIES,
                 "{\"tool_call\":{\"name\":\"kb-search\",\"arguments\":{}}}",
@@ -252,8 +252,13 @@ class ToolCallingChatServiceTest {
         UUID callId = pendingChunk.pendingConfirmation().callId();
         assertThat(pendingChunk.pendingConfirmation().toolName()).isEqualTo("second-tool");
 
-        boolean resolved = registry.resolve(callId, true);
-        assertThat(resolved).isTrue();
+        // registry.await registers on subscription, not on call (post-roadmap review B4), and that
+        // subscription only happens once callEvent (the pending chunk emitted above) has finished —
+        // a genuine, narrow async gap between "the client sees the pending confirmation" and "the
+        // registry can resolve it" that didn't exist under the old eager-registration behaviour.
+        // Negligible in production (a real confirm click is milliseconds-to-seconds away over the
+        // network); resolveEventually spins briefly rather than asserting the very first attempt.
+        assertThat(resolveEventually(registry, callId)).isTrue();
 
         assertThat(doneLatch.await(5, TimeUnit.SECONDS)).isTrue();
         assertThat(secondExecutions).hasValue(1);
@@ -261,10 +266,21 @@ class ToolCallingChatServiceTest {
         assertThat(collected.get(collected.size() - 1).aggregate().content()).isEqualTo("Final answer.");
     }
 
+    private static boolean resolveEventually(PendingConfirmationRegistry registry, UUID callId)
+            throws InterruptedException {
+        for (int attempt = 0; attempt < 50; attempt++) {
+            if (registry.resolve(callId, true)) {
+                return true;
+            }
+            Thread.sleep(20);
+        }
+        return false;
+    }
+
     private static ToolCallingChatService newService(ToolsProperties properties, List<Tool> tools) {
         ToolInvoker invoker = new ToolInvoker(
                 new ToolRegistry(tools), new SchemaValidator(), new ScopeAuthorizer(properties), null, null);
-        return new ToolCallingChatService(invoker, new PendingConfirmationRegistry(), properties);
+        return new ToolCallingChatService(invoker, new PendingConfirmationRegistry(properties), properties);
     }
 
     private static Tool fakeTool(

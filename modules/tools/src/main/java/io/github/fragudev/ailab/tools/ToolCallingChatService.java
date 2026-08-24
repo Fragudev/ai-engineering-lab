@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -149,14 +150,7 @@ public class ToolCallingChatService {
                                     null,
                                     "Denied by user",
                                     0)))
-                    .onErrorReturn(new ToolCallResult(
-                            callId,
-                            call.name(),
-                            call.argumentsJson(),
-                            ToolCallOutcome.TIMEOUT,
-                            null,
-                            "Confirmation not received within " + properties.confirmationTimeout(),
-                            0));
+                    .onErrorResume(e -> Mono.just(confirmationErrorResult(callId, call, e)));
         } else {
             resultMono = toolInvoker.invokeForChat(callId, call.name(), call.argumentsJson(), executionContext(state));
         }
@@ -199,6 +193,26 @@ public class ToolCallingChatService {
         augmented.add(ChatMessage.system(prompt.toString()));
         augmented.addAll(history);
         return augmented;
+    }
+
+    /** {@code confirmationRegistry.await} can fail two distinct ways: a real {@link
+     * TimeoutException} (nobody confirmed in time) or, since post-roadmap review B4, an {@code
+     * IllegalStateException} when {@code ai.tools.max-pending-confirmations} is already at capacity
+     * — a system-busy rejection, not a timeout, and reported as such rather than folded into the
+     * same message. */
+    private ToolCallResult confirmationErrorResult(UUID callId, ParsedToolCall call, Throwable e) {
+        if (e instanceof TimeoutException) {
+            return new ToolCallResult(
+                    callId,
+                    call.name(),
+                    call.argumentsJson(),
+                    ToolCallOutcome.TIMEOUT,
+                    null,
+                    "Confirmation not received within " + properties.confirmationTimeout(),
+                    0);
+        }
+        return new ToolCallResult(
+                callId, call.name(), call.argumentsJson(), ToolCallOutcome.ERROR, null, e.getMessage(), 0);
     }
 
     private static String toEnvelope(ParsedToolCall call) {

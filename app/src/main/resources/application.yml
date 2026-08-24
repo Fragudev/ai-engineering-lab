@@ -87,6 +87,10 @@ ai:
     confirmation-timeout: 60s
     # Bounds the tool-calling loop; not a general agentic loop (that's Phase 6/workflow's job).
     max-calls-per-turn: 3
+    # Caps concurrent tool calls awaiting confirmation at once — a minor denial-of-service
+    # consideration given no rate limiting exists (post-roadmap review B4). A reasoned starting
+    # bound, not measured against any dataset, same honesty as the bounds above.
+    max-pending-confirmations: 100
   workflow:
     enabled: true
     # Reasoned starting bounds, not measured against any dataset (AGENTS.md rule 2) — same honesty

@@ -40,6 +40,7 @@ class ToolsPropertiesValidationTest {
                 "ai.tools.granted-scopes=calculator:use",
                 "ai.tools.default-timeout=5s",
                 "ai.tools.confirmation-timeout=60s",
-                "ai.tools.max-calls-per-turn=3");
+                "ai.tools.max-calls-per-turn=3",
+                "ai.tools.max-pending-confirmations=100");
     }
 }
