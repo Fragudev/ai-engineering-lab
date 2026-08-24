@@ -1,8 +1,11 @@
 package io.github.fragudev.ailab.tools.internal;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * @param grantedScopes stands in for "the one authenticated user's permissions" — no real principal
@@ -14,10 +17,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     tool's own execution timeout
  * @param maxCallsPerTurn bounds the tool-calling loop; not a general agentic loop (Phase 6's job)
  */
+@Validated
 @ConfigurationProperties(prefix = "ai.tools")
 public record ToolsProperties(
         boolean enabled,
-        List<String> grantedScopes,
-        Duration defaultTimeout,
-        Duration confirmationTimeout,
-        int maxCallsPerTurn) {}
+        @NotNull List<String> grantedScopes,
+        @NotNull Duration defaultTimeout,
+        @NotNull Duration confirmationTimeout,
+        @Positive int maxCallsPerTurn) {}
