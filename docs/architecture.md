@@ -665,10 +665,18 @@ concrete consumer (a dashboard panel, an alert — neither exists today, see bel
 speculative work this project's own `docs/roadmap.md` "Deliberately deferred" table already argues
 against for comparable cases (see ADR-0012).
 
-**Logs.** Structured JSON with `traceId` and `correlationId`, shipped to Loki. **Prompts and
-completions are redacted by default**, with a local-only flag to enable them for debugging. Logging
-full prompts by default would be a data leak in any real deployment; the flag and its warning are
-deliberate.
+**Logs.** Structured JSON with `traceId` and `correlationId`, shipped to Loki. **Redaction is planned,
+not built** (docs/threat-model.md T7) — this section previously claimed it was live, corrected in the
+post-roadmap review rather than left (issue #24). What's true today, verified by a case-insensitive
+grep for `redact`/`sanitiz`/`mask` across all 226 `src/main/java` files (one hit, an unrelated comment
+in `platform.IdempotencyGuard`): no log statement or trace attribute anywhere in this codebase
+includes prompt or completion content, so there is no active leak. But that's an absence, not a
+guarantee — no redaction utility or lint exists to catch a future log line that does include content,
+the way `LmStudioChatProvider`'s `gen_ai.*` trace attributes (model name, token counts) are
+deliberately scoped to metadata today. The planned mitigation makes that an enforced invariant instead
+of an accident of no one having added such a log line yet: prompt and completion content excluded
+from logs and trace attributes by default, with a local-only flag to enable them for debugging and a
+startup warning when it's on.
 
 **Dashboards.** No dashboards are provisioned from the repository — this was previously stated here
 and was never true; corrected in Phase 8's documentation review rather than left. Today, Grafana's
