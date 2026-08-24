@@ -100,6 +100,34 @@ jobs:
           sarif_file: trivy-image-results.sarif
           category: trivy-image
 
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # DemoJourneyEndToEndTest (post-roadmap review issue #34) is tagged "e2e" and excluded from the
+      # `build` job's own `./mvnw verify` by default (app/pom.xml's Surefire config) — a separate job
+      # here, not a step in `build`, since it chains real Postgres + Kafka + an MCP handshake into one
+      # continuous flow and is materially slower than any single capability test. Installs the
+      # reactor's other modules with tests skipped first (they're already covered by `build`) so this
+      # job only pays for what it's actually here to run.
+      - name: Install reactor dependencies (tests already covered by the build job)
+        run: ./mvnw -B -pl app -am install -DskipTests
+
+      - name: Run end-to-end demo journey
+        run: ./mvnw -B -pl app test -Pe2e
+
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 20

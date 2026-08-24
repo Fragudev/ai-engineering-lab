@@ -184,6 +184,18 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
+      <!-- DemoJourneyEndToEndTest (post-roadmap review issue #34) is tagged "e2e" and excluded from
+           the normal ./mvnw verify run by default here — it chains real Postgres + Kafka + a real
+           MCP handshake into one continuous flow, materially slower than this project's other
+           container-backed integration tests, which each exercise one capability in isolation. The
+           `e2e` profile below flips this to run ONLY that tag, for its own dedicated CI job. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludedGroups>e2e</excludedGroups>
+        </configuration>
+      </plugin>
       <!-- The reactor-wide coverage number (post-roadmap review issue #33): app is the only module
            that already depends on all eleven others, so it's the natural place to merge every
            module's jacoco.exec into one report rather than adding a synthetic dependency elsewhere
@@ -239,4 +251,25 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!-- Activated explicitly (-Pe2e) by ci.yml's dedicated e2e job, and available locally the same
+         way: ./mvnw test -pl app -am -Pe2e. Inverts the default plugin config above — this profile's
+         plugin block, not a full replacement, so everything else (jacoco, spring-boot-maven-plugin)
+         stays exactly as configured in <build> above. -->
+    <profile>
+      <id>e2e</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration combine.self="override">
+              <groups>e2e</groups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
