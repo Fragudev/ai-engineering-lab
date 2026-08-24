@@ -1,0 +1,41 @@
+app/pom.xml
+  s_404c5ea073f7bb::t_ab16e84d4fb01e 187-239
+docs/architecture.md
+  s_404c5ea073f7bb::t_330210ec3dcb0d 626,631-652
+pom.xml
+  s_222fea55b82233::t_3deef9e545054a 46,186-211
+.github/workflows/ci.yml
+  s_f6c2719e97e037::t_8f07da93b2d6ad 42-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7d08935b17718e660d78b82fc1f92003accfb2f7",
+  "prompts": {},
+  "sessions": {
+    "s_222fea55b82233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9814de7e-05c3-45d9-8870-f7d6c297ac89",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_404c5ea073f7bb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02a7a-a0bf-739c-a4d3-c3a3c3ca3fa5",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
