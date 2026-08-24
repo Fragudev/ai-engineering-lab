@@ -1,0 +1,55 @@
+docs/ai-evaluation.md
+  s_09c8dbffdc9d37::t_840f985d0d5851 170,172,177-178,189-218
+eval/reports/2026-08-24-dense-only.json
+  s_f6c2719e97e037::t_47ab341b6d12f1 1-35
+eval/reports/2026-08-24-dense-only.md
+  s_16cb05b5fac941::t_b4cc5c702631ed 1-41
+modules/rag/src/test/java/io/github/fragudev/ailab/rag/RagPipelineAbstentionTest.java
+  s_f6c2719e97e037::t_6ae34f1982d468 1-63
+docs/adr/0013-rag-abstention-threshold.md
+  s_f6c2719e97e037::t_9d586c1c019b18 1-138
+docs/adr/README.md
+  s_f6c2719e97e037::t_eef8ffa0a38ba8 26,33-34
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioProviderConfiguration.java
+  s_f6c2719e97e037::t_13c44760a4b3e8 33-39
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalRunner.java
+  s_f6c2719e97e037::t_d66735444fd1b7 33-34,45-46,109-123
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagPipeline.java
+  s_f6c2719e97e037::t_9238444d70b337 176-179
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagProfile.java
+  s_f6c2719e97e037::t_ab09f90ff0d53f 20-23
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagProfiles.java
+  s_f6c2719e97e037::t_685537800902e3 11-18,20,22,25,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e0494f782085a4a02eaefcf9052aab9e53749fe1",
+  "prompts": {},
+  "sessions": {
+    "s_09c8dbffdc9d37": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a033a6-529d-70ca-b6bf-e48dfdbf32ce",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_16cb05b5fac941": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a033a2-c317-7901-aee7-4637193cb0bc",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
