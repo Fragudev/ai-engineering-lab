@@ -612,19 +612,32 @@ sequenceDiagram
 
 ## 11. Testing strategy
 
+**Every tool named below is a real, present dependency — verified by grepping every `pom.xml`, not
+assumed (post-roadmap review issue #35).** An earlier version of this table named four tools that
+were never added (OpenAPI validator, WireMock, Toxiproxy, Error Prone, NullAway) — a tooling
+column that was fiction even where the underlying coverage was partly real by other means. Corrected
+here rather than retrofitted by adopting four libraries purely to make a sentence true, matching the
+Security row's own precedent (corrected the same way in Phase 8) and this project's own
+"deliberately deferred, not silently dropped" discipline elsewhere.
+
 | Level | Tooling | Coverage |
 |---|---|---|
 | Unit | JUnit 5, AssertJ | Domain logic, chunking, RRF fusion, token budgeting |
 | Architecture | ArchUnit, Spring Modulith | Module boundaries, dependency rules, layering |
 | Integration | Testcontainers (pgvector, Kafka) | Repositories, consumers, migrations |
 | End-to-end | `DemoJourneyEndToEndTest`, tagged `e2e`, own CI job (post-roadmap review issue #34) | The exact journey `scripts/demo.sh` narrates by hand, chained in one flow: plain chat → real async ingestion → RAG answer with a citation → a confirmed tool call over a real MCP handshake → a persisted six-stage workflow run |
-| API contract | OpenAPI validator, MockMvc | Implementation conforms to the published spec |
-| Provider | WireMock + fixtures | Streaming, timeouts, 429s, malformed JSON, invalid tool calls |
-| Failure path | Testcontainers + Toxiproxy | Database down, Kafka down, slow model, retry exhaustion → DLT |
+| Provider | A hand-written fake `ChatModel` (`LmStudioChatProviderTest`) — no WireMock, no live network call | A stalled stream times out as a typed `ProviderTimeoutException` rather than hanging. Narrower than once claimed: 429s, malformed JSON and invalid tool calls aren't exercised at this layer today |
+| Failure path | Testcontainers (pgvector, Kafka) | Retry exhaustion → the dead-letter topic, with payload identity and a populated `last_error` asserted directly (`IngestionFailureIntegrationTest`, issue #32), plus a stalled provider timing out (Provider row, above). Database-down and Kafka-down scenarios are not exercised — no chaos/proxy tooling is wired in for it, named as a real gap rather than a Toxiproxy dependency that isn't there |
 | AI evaluation | `evaluation` module + `scripts/eval.sh` (custom runner, not a tagged test suite) | Retrieval and answer quality |
-| Static | Spotless, Error Prone, NullAway | Formatting, correctness, nullability |
+| Static | Spotless | Formatting only — no Error Prone or NullAway is configured; correctness and nullability rely on `jspecify` annotations plus manual review, not a static-analysis gate |
 | Security | OWASP Dependency-Check, Trivy, CodeQL, gitleaks — all real CI jobs since Phase 8 (`.github/workflows/ci.yml`, `codeql.yml`) | Dependencies, images, code, secrets |
 | Coverage | JaCoCo, aggregated across the reactor via `app`'s `report-aggregate` (post-roadmap review issue #33) | 88.0% instruction coverage measured live 2026-08-24 (10,257/11,651 instructions; `app/target/site/jacoco-aggregate/`) |
+
+**No automated API contract test.** `app/src/main/resources/openapi/openapi.yaml` is hand-maintained
+and spec-first (written before the controller it describes, per this project's own working
+convention) — nothing asserts the implementation still matches it once both have moved on. Removed
+from the table above rather than left pointing at a MockMvc/OpenAPI-validator combination that was
+never built; a real gap, not a tooling-name typo.
 
 **Failure-path tests are the differentiating layer.** Everyone tests the happy path. Demonstrating
 that a document whose embedding stage fails three times lands in the dead-letter topic with its job
