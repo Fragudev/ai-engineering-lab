@@ -62,7 +62,12 @@ class StageRunner {
         WorkflowStep step =
                 existing != null ? existing : new WorkflowStep(WorkflowStepId.generate(), runId, stepIndex, name);
         Instant start = Instant.now();
-        int totalAttempts = 1 + properties.stageRetryAttempts();
+        // Clamped to at least 1 (post-roadmap review B2): a misconfigured negative
+        // stage-retry-attempts must never make the loop below skip entirely — that left lastError
+        // null and threw NullPointerException instead of a clear stage failure. The config-validation
+        // issue (post-roadmap review B3) rejects this at startup too; this guard is defense in depth,
+        // the same layered pattern issue #22 established for the tool confirmation gate.
+        int totalAttempts = Math.max(1, 1 + properties.stageRetryAttempts());
         Exception lastError = null;
 
         for (int attempt = 1; attempt <= totalAttempts; attempt++) {
@@ -86,7 +91,7 @@ class StageRunner {
             }
         }
 
-        step.markFailed(Map.of("error", String.valueOf(lastError.getMessage())));
+        step.markFailed(Map.of("error", errorMessage(lastError)));
         stepRepository.save(step);
         metrics.recordStage(name, WorkflowStepStatus.FAILED, Duration.between(start, Instant.now()));
         throw new StageFailedException(name, lastError);
@@ -94,6 +99,14 @@ class StageRunner {
 
     private static boolean isRetryable(Exception e) {
         return e instanceof ProviderException;
+    }
+
+    /** A bare {@code NullPointerException} and friends often carry no message at all —
+     * {@code String.valueOf(e.getMessage())} would then persist the literal string {@code "null"},
+     * indistinguishable from a real error saying so (post-roadmap review B2). Same fallback
+     * {@code tools.ToolInvoker}'s execution-error handling already uses. */
+    private static String errorMessage(Exception e) {
+        return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
     }
 
     /** {@code attempt} is 1-indexed and always < {@code totalAttempts} here, so this only ever

@@ -87,6 +87,64 @@ class StageRunnerTest {
         assertThat(persisted.attempts()).isEqualTo(1);
     }
 
+    /** Post-roadmap review B2 (issue #26): {@code stageRetryAttempts = 0} means "no retries beyond
+     * the first attempt," not "the loop never runs" — {@code totalAttempts} used to be
+     * {@code 1 + stageRetryAttempts} with no floor, so this boundary alone didn't NPE (it's exactly
+     * 1), but it's the edge the negative case below silently fell past. */
+    @Test
+    void zeroRetryAttemptsRunsExactlyOnce() {
+        AtomicInteger calls = new AtomicInteger();
+        FakeWorkflowStepRepository repository = new FakeWorkflowStepRepository();
+        StageRunner zeroRetryRunner = new StageRunner(
+                repository, new WorkflowsProperties(true, 1, 1, 1, 0, Duration.ofSeconds(5), BASE_DELAY), metrics);
+
+        assertThatThrownBy(() -> zeroRetryRunner.run(WorkflowRunId.generate(), 0, "retrieve", Map.of(), null, () -> {
+                    calls.incrementAndGet();
+                    throw new ProviderTimeoutException("lmstudio", Duration.ofSeconds(30));
+                }))
+                .isInstanceOf(StageFailedException.class);
+
+        assertThat(calls).hasValue(1);
+    }
+
+    /** A negative {@code stage-retry-attempts} used to make {@code totalAttempts < 1}, so the retry
+     * loop's body never ran at all: {@code lastError} stayed {@code null} and the line dereferencing
+     * it threw {@code NullPointerException} instead of a clear {@code StageFailedException}. Nothing
+     * validates this property (post-roadmap review B3 covers that separately); {@code StageRunner}
+     * now clamps defensively so a negative value degrades to "one attempt, no retries" instead of
+     * crashing. */
+    @Test
+    void negativeRetryAttemptsClampsToOneAttemptWithoutNpe() {
+        AtomicInteger calls = new AtomicInteger();
+        FakeWorkflowStepRepository repository = new FakeWorkflowStepRepository();
+        StageRunner negativeRetryRunner = new StageRunner(
+                repository, new WorkflowsProperties(true, 1, 1, 1, -5, Duration.ofSeconds(5), BASE_DELAY), metrics);
+
+        assertThatThrownBy(
+                        () -> negativeRetryRunner.run(WorkflowRunId.generate(), 0, "retrieve", Map.of(), null, () -> {
+                            calls.incrementAndGet();
+                            throw new ProviderTimeoutException("lmstudio", Duration.ofSeconds(30));
+                        }))
+                .isInstanceOf(StageFailedException.class)
+                .hasCauseInstanceOf(ProviderTimeoutException.class);
+
+        assertThat(calls).hasValue(1);
+    }
+
+    /** Post-roadmap review B2's second half: a bare exception with no message (a raw
+     * {@code NullPointerException} is the common real case) must not persist the literal string
+     * {@code "null"} as its recorded error — indistinguishable from a real error that says so. */
+    @Test
+    void exceptionWithNoMessagePersistsClassNameNotTheLiteralStringNull() {
+        assertThatThrownBy(() -> runner.run(WorkflowRunId.generate(), 0, "synthesise", Map.of(), null, () -> {
+                    throw new NullPointerException();
+                }))
+                .isInstanceOf(StageFailedException.class);
+
+        WorkflowStep persisted = onlyStep();
+        assertThat(persisted.output()).containsEntry("error", "NullPointerException");
+    }
+
     private WorkflowStep onlyStep() {
         return stepRepository.findAll().stream()
                 .reduce((a, b) -> {
