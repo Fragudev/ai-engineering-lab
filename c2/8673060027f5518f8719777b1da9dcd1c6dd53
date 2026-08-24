@@ -1,0 +1,21 @@
+docs/architecture.md
+  s_f6c2719e97e037::t_7670e1c7a7d7be 668-679
+docs/threat-model.md
+  s_f6c2719e97e037::t_d0b71725ccba56 180-185,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c28673060027f5518f8719777b1da9dcd1c6dd53",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
