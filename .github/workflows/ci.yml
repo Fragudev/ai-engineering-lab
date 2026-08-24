@@ -39,6 +39,18 @@ jobs:
       - name: Build and verify
         run: ./mvnw -B verify
 
+      # Surfaces the reactor-wide coverage report (post-roadmap review issue #33) so a reviewer can
+      # open it without a local build — the same "surfaced in CI" bar the SBOM (release.yml) and eval
+      # report (nightly-eval.yml) artifacts already meet. jacoco:check above (bound to verify) already
+      # gates the build on the 80% floor; this is for visibility, not enforcement.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-coverage-report
+          path: app/target/site/jacoco-aggregate/
+          if-no-files-found: warn
+
       # The Maven build alone doesn't prove the shippable artifact works: the Dockerfile compiles
       # with a different (real) JDK image and a different build context than the host runner, and
       # that gap is exactly where past bugs surfaced (a Maven settings flag that only broke inside

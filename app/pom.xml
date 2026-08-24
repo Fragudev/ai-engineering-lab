@@ -184,6 +184,59 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
+      <!-- The reactor-wide coverage number (post-roadmap review issue #33): app is the only module
+           that already depends on all eleven others, so it's the natural place to merge every
+           module's jacoco.exec into one report rather than adding a synthetic dependency elsewhere
+           just for this. report-aggregate needs an explicit phase (unlike prepare-agent/report
+           inherited from the root pom, it has no intrinsic default binding — confirmed live: without
+           this it silently never ran). check is a separate goal with its own real scope limitation —
+           see its own execution's comment below for what it actually enforces and why (measured for
+           real, not guessed — AGENTS.md rule 2). -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>report-aggregate</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report-aggregate</goal>
+            </goals>
+          </execution>
+          <!-- check's own real, verified-live limitation (not documented anywhere obvious in
+               JaCoCo's own docs): unlike report-aggregate, it doesn't walk the reactor to analyze
+               sibling modules' bytecode — it only ever checks the CURRENT project's own compiled
+               classes against its own (or an explicitly merged) exec data. Binding it here therefore
+               enforces a floor on app's own module bundle specifically, not the reactor-wide figure
+               report-aggregate produces and docs/architecture.md §11 documents (88.0%). Confirmed by
+               running it: app's own bundle measured 1619/2025 instructions = 79.95% — well below the
+               reactor aggregate, since most non-app modules' code only gets exercised later, during
+               app's own integration tests, which this module's own jacoco.exec never sees. Threshold
+               set at 75%, a real margin below the 79.95% actually measured for this specific bundle
+               (not the 88.0% headline figure — using that here would silently pass even if app's own
+               module's tests regressed badly, as long as the rest of the reactor stayed covered). -->
+          <execution>
+            <id>check</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>INSTRUCTION</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.75</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

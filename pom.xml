@@ -43,6 +43,7 @@
     <spotless-maven-plugin.version>3.10.0</spotless-maven-plugin.version>
     <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
     <dependency-check-maven.version>13.0.0</dependency-check-maven.version>
+    <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
     <postgresql.version>42.7.13</postgresql.version>
   </properties>
 
@@ -177,6 +178,32 @@
             <phase>verify</phase>
             <goals>
               <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Instruments every module's own test JVM (prepare-agent, default binding: initialize) and
+           writes that module's own HTML/XML report (report, default binding: verify) — both left at
+           their intrinsic default phase, no override needed. The reactor-wide number this measures
+           (post-roadmap review issue #33) comes from app/pom.xml's separate report-aggregate
+           execution: app is the one module that already depends on all eleven others, so it's the
+           natural aggregation point without inventing a synthetic dependency just for coverage. -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
             </goals>
           </execution>
         </executions>
