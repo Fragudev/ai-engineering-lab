@@ -252,7 +252,7 @@ See [ADR-0011](adr/0011-mcp-tool-exposure-boundaries.md).
 | **Tampering** | Event or database modification | Kafka and PostgreSQL not exposed outside the Compose network; parameterised queries (Spring Data JPA); Flyway checksums |
 | **Repudiation** | No record of what happened | Every message, tool invocation and workflow step persisted with timestamps and correlation ids |
 | **Information disclosure** | Secrets in the repository or logs | No secrets committed; `.env` git-ignored; **gitleaks in CI, built Phase 8** (`.github/workflows/ci.yml`); prompt/completion redaction *planned, not built* — see T7, this row previously claimed it was live (issue #24) |
-| **Denial of service** | Resource exhaustion via uploads or queries | *Planned, not built:* upload size limits, rate limiting, connection pool bounds, consumer concurrency caps, and a circuit breaker on the model server — none of these are explicitly configured today; Spring Boot/Spring Kafka's own defaults apply, which are not the same as a deliberate limit. |
+| **Denial of service** | Resource exhaustion via uploads or queries | **Upload and chat message size limits, built (issue #23)** — see T5: `spring.servlet.multipart.max-file-size`/`max-request-size` (10 MB), `@Size(max = 8000)` on chat message content, `server.tomcat.max-swallow-size` (15 MB). *Planned, not built:* rate limiting, connection pool bounds, consumer concurrency caps, and a circuit breaker on the model server — none of these are explicitly configured today; Spring Boot/Spring Kafka's own defaults apply, which are not the same as a deliberate limit. |
 | **Elevation of privilege** | Escaping the single-user role | No dynamic role assignment; tool scopes static and declared in code, never derived from input |
 
 ---
