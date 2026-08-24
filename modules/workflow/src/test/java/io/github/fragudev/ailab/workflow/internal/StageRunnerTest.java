@@ -76,7 +76,12 @@ class StageRunnerTest {
                 .hasCauseInstanceOf(IllegalStateException.class);
 
         assertThat(calls).hasValue(1);
-        assertThat(Duration.between(start, Instant.now())).isLessThan(BASE_DELAY);
+        // The call count above is the direct proof no retry happened; this is a generous secondary
+        // check that no deliberate backoff sleep occurred either. A tight bound tied to BASE_DELAY
+        // (50ms) is genuinely flaky under CI-runner load — plain JVM/test-harness overhead alone hit
+        // 74ms in a real CI run with no backoff involved at all — so this uses a fixed, comfortably
+        // large ceiling instead of one sized to the sleep duration it's trying to rule out.
+        assertThat(Duration.between(start, Instant.now())).isLessThan(Duration.ofSeconds(2));
         WorkflowStep persisted = onlyStep();
         assertThat(persisted.status()).isEqualTo(WorkflowStepStatus.FAILED);
         assertThat(persisted.attempts()).isEqualTo(1);
