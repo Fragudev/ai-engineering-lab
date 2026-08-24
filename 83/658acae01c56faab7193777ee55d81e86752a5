@@ -1,0 +1,27 @@
+modules/knowledge/src/test/java/io/github/fragudev/ailab/knowledge/internal/MmrRerankerTest.java
+  s_f6c2719e97e037::t_c28492fbeab564 1-105
+modules/knowledge/src/test/java/io/github/fragudev/ailab/knowledge/internal/ReciprocalRankFusionTest.java
+  s_f6c2719e97e037::t_2712e1a286c55e 1-87
+modules/rag/src/test/java/io/github/fragudev/ailab/rag/internal/CitationExtractorTest.java
+  s_f6c2719e97e037::t_9a21e489090ade 1-110
+modules/rag/src/test/java/io/github/fragudev/ailab/rag/internal/ContextBuilderTest.java
+  s_f6c2719e97e037::t_29d60e06a44364 1-93
+modules/shared/src/test/java/io/github/fragudev/ailab/shared/TypedIdTest.java
+  s_f6c2719e97e037::t_a940a6d70ef433 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "83658acae01c56faab7193777ee55d81e86752a5",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
