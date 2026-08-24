@@ -1,0 +1,39 @@
+app/src/main/resources/application.yml
+  s_8ca842344072f2::t_b7cf7ab269517b 101-104
+app/src/test/java/io/github/fragudev/ailab/WorkflowCompensationIntegrationTest.java
+  s_8ca842344072f2::t_a1d14dc42c1129 23-28,74
+docs/adr/0010-agent-orchestration.md
+  s_8ca842344072f2::t_fe4c3419620fbe 103-117,194-196
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/StageRunner.java
+  s_8ca842344072f2::t_5a5e975aea217d 3,23-33,80-85,94-110
+modules/workflow/src/main/java/io/github/fragudev/ailab/workflow/internal/WorkflowsProperties.java
+  s_8ca842344072f2::t_6997cb59217dc8 16-19,28-29
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/FakeWorkflowStepRepository.java
+  s_f6c2719e97e037::t_3e6a570684f338 1-187
+modules/workflow/src/test/java/io/github/fragudev/ailab/workflow/internal/StageRunnerTest.java
+  s_f6c2719e97e037::t_ede954ccc598d8 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5e4e34458ad49b9c0e492c10961c5cdc91c7e9bd",
+  "prompts": {},
+  "sessions": {
+    "s_8ca842344072f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4db8a879-00ae-4699-b479-6c9220e502b3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    },
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
