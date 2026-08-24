@@ -98,6 +98,10 @@ ai:
     max-llm-calls-per-run: 20
     stage-retry-attempts: 2
     step-timeout: 30s
+    # StageRunner's exponential backoff between retry attempts (doubling each time), only for
+    # retryable failures (docs/adr/0010-agent-orchestration.md, post-roadmap review B1) — a
+    # reasoned starting bound, not tuned against any dataset, same honesty as the bounds above.
+    retry-base-delay: 500ms
   mcp:
     client:
       # Stands in for "the one authenticated user's permissions" for every externally-sourced tool,

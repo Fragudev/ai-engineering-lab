@@ -100,6 +100,21 @@ in-memory text checks), so there is nothing else to roll back. This is the delib
 `extract-per-source` tolerate partial internal failure on their own (succeeding if at least one
 sub-task succeeds) — compensation only fires once a stage has exhausted *all* of its own tolerance.
 
+**Retries are selective and back off — added in the post-roadmap review (issue #25, B1), not part of
+Phase 6's original design.** The first cut of `StageRunner` retried every `catch (Exception e)`
+immediately, with no delay. Both halves were wrong for the failure modes this harness actually faces:
+a model-server timeout or rate limit gains nothing from three instant retries against the same
+condition (Phase 8's own live run demonstrated exactly that — `LlmReranker` timed out on every call
+against a 27B model, burning `1 + stage-retry-attempts` full timeouts back to back before falling
+back), and a programming error or malformed-response parse failure isn't fixed by retrying at all, only
+delayed. Now: only a `shared.ProviderException` (timeout, rate limit, connection failure — the actual
+transient cases) is retried; anything else fails the stage on its first attempt, mirroring
+`NonRetryableIngestionException`'s equivalent distinction already established in the ingestion
+pipeline (docs/adr/0005-kafka.md). A retried attempt backs off exponentially —
+`ai.workflow.retry-base-delay` (default 500ms), doubling each attempt — instead of firing immediately.
+Both the retryable/non-retryable split and the backoff are pinned by `StageRunnerTest`, this class's
+first real unit test (task #89 had recorded it as written; it wasn't — see post-roadmap review T2).
+
 **Resumability: persisted-step-driven resume, triggered by `ApplicationReadyEvent`.**
 `POST /api/v1/workflows/{type}/runs` persists a `WorkflowRun` (`PENDING`) and returns `202` +
 `Location` immediately — matching §2's documented "asynchronous, persisted state" mode and the
@@ -176,8 +191,9 @@ nested inside the owning stage's `output` JSON rather than as separate rows.
   exceed the nominal per-run bound. Accepted given T5's own "planned mitigation" framing — a real,
   reasoned bound, not a precisely engineered guarantee, the same honesty as `ai.tools.max-calls-per-turn`
   (AGENTS.md rule 2).
-- **`max-sub-queries` (4), `max-sources-to-extract` (8), `max-llm-calls-per-run` (20) and
-  `stage-retry-attempts` (2) are unmeasured starting bounds**, not tuned against any dataset.
+- **`max-sub-queries` (4), `max-sources-to-extract` (8), `max-llm-calls-per-run` (20),
+  `stage-retry-attempts` (2) and `retry-base-delay` (500ms) are unmeasured starting bounds**, not
+  tuned against any dataset.
 - **Fan-out sub-task attempts aren't separately queryable rows** — a `retrieve` or `extract-per-source`
   stage's individual sub-query/source outcomes are visible inside that one step's `output` JSON, not
   as their own inspectable `WorkflowStep` rows.

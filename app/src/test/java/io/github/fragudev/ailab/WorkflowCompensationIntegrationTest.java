@@ -20,9 +20,12 @@ import org.testcontainers.utility.DockerImageName;
 
 /**
  * A run whose {@code retrieve} stage finds nothing (an empty knowledge base — nothing seeded in
- * this test's own, otherwise-untouched database) exhausts {@code StageRunner}'s retries and is
- * compensated: the run ends {@code FAILED} with a clear reason, not left {@code RUNNING} or with a
- * fabricated partial answer (docs/roadmap.md Phase 6 acceptance criterion 3).
+ * this test's own, otherwise-untouched database) is compensated: the run ends {@code FAILED} with a
+ * clear reason, not left {@code RUNNING} or with a fabricated partial answer (docs/roadmap.md Phase 6
+ * acceptance criterion 3). Fails on the stage's first attempt, not after exhausting retries — an
+ * empty knowledge base is {@code IllegalStateException}, not a {@code ProviderException}, so
+ * {@code StageRunner}'s retryable/non-retryable distinction (post-roadmap review B1) correctly
+ * doesn't burn retry attempts on a deterministic failure retrying cannot fix.
  */
 @Testcontainers
 @AutoConfigureRestTestClient
@@ -68,7 +71,7 @@ class WorkflowCompensationIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(retrieveStep.status()).isEqualTo("FAILED");
-        assertThat(retrieveStep.attempts()).isGreaterThan(1);
+        assertThat(retrieveStep.attempts()).isEqualTo(1);
     }
 
     private WorkflowRunResponse awaitTerminalRun(UUID id) {

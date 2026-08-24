@@ -13,6 +13,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     names as planned — scoped per engine invocation, not cumulative across a restart+resume
  * @param stageRetryAttempts additional attempts after the first, before a stage is compensated
  * @param stepTimeout bounds one individual retrieval or LLM call inside a stage's fan-out
+ * @param retryBaseDelay base delay {@link StageRunner} backs off by between retry attempts,
+ *     doubling each time (attempt 1: this value, attempt 2: 2x, ...) — only for retryable failures;
+ *     a reasoned starting bound, not tuned against any dataset (AGENTS.md rule 2, post-roadmap
+ *     review B1)
  */
 @ConfigurationProperties(prefix = "ai.workflow")
 public record WorkflowsProperties(
@@ -21,4 +25,5 @@ public record WorkflowsProperties(
         int maxSourcesToExtract,
         int maxLlmCallsPerRun,
         int stageRetryAttempts,
-        Duration stepTimeout) {}
+        Duration stepTimeout,
+        Duration retryBaseDelay) {}
