@@ -4,6 +4,7 @@ import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
 import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
+import io.github.fragudev.ailab.aiprovider.LlmDegradationMetrics;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,9 +25,11 @@ public class QueryNormalizer {
                     + "engine. Respond with ONLY the rewritten question, no other text.";
 
     private final ChatProvider chatProvider;
+    private final LlmDegradationMetrics degradationMetrics;
 
-    public QueryNormalizer(ChatProvider chatProvider) {
+    public QueryNormalizer(ChatProvider chatProvider, LlmDegradationMetrics degradationMetrics) {
         this.chatProvider = chatProvider;
+        this.degradationMetrics = degradationMetrics;
     }
 
     public String normalize(List<ChatMessage> history, String query) {
@@ -40,8 +43,11 @@ public class QueryNormalizer {
                         request,
                         content -> content.trim().isEmpty() ? null : content.trim(),
                         query,
-                        e -> log.warn("Query normalization failed, using the original query for retrieval", e),
-                        content -> {})
+                        e -> {
+                            log.warn("Query normalization failed, using the original query for retrieval", e);
+                            degradationMetrics.recordProviderFailure("query-normalizer", e);
+                        },
+                        content -> degradationMetrics.recordParseFailure("query-normalizer"))
                 .value();
     }
 

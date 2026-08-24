@@ -4,6 +4,7 @@ import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
 import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
+import io.github.fragudev.ailab.aiprovider.LlmDegradationMetrics;
 import java.math.BigDecimal;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -27,9 +28,11 @@ class SourceExtractor {
                     + "passage is relevant.";
 
     private final ChatProvider chatProvider;
+    private final LlmDegradationMetrics degradationMetrics;
 
-    SourceExtractor(ChatProvider chatProvider) {
+    SourceExtractor(ChatProvider chatProvider, LlmDegradationMetrics degradationMetrics) {
         this.chatProvider = chatProvider;
+        this.degradationMetrics = degradationMetrics;
     }
 
     ExtractResult extract(String query, String sourceContent) {
@@ -45,7 +48,13 @@ class SourceExtractor {
                     return (facts.isEmpty() || facts.equalsIgnoreCase("NONE")) ? null : facts;
                 },
                 null,
-                e -> log.warn("Source extraction failed for one source, dropping it", e),
+                e -> {
+                    log.warn("Source extraction failed for one source, dropping it", e);
+                    degradationMetrics.recordProviderFailure("source-extractor", e);
+                },
+                // Not a degradation: the prompt explicitly instructs the model to answer NONE when
+                // nothing in the passage is relevant, so an empty/NONE result is a correct, expected
+                // response, not a failure the counter below should be recording.
                 content -> {});
         return new ExtractResult(outcome.value(), outcome.costUsd());
     }
