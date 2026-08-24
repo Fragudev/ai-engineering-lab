@@ -17,7 +17,7 @@ class ScopeAuthorizerTest {
 
     private static ScopeAuthorizer authorizerWithGrantedScopes(String... granted) {
         return new ScopeAuthorizer(
-                new ToolsProperties(true, List.of(granted), Duration.ofSeconds(5), Duration.ofSeconds(60), 3));
+                new ToolsProperties(true, List.of(granted), Duration.ofSeconds(5), Duration.ofSeconds(60), 3, 10));
     }
 
     @Test

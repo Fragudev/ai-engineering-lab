@@ -80,14 +80,34 @@ call" (`ToolDefinition.alwaysRequiresConfirmation`, above) for exactly the class
 written for, and it's covered by `ToolCallingChatServiceTest.unknownToolForThisTurnFailsClosedInsteadOfExecuting`.
 
 **Confirmation mechanics.** `internal.PendingConfirmationRegistry` holds a
-`Map<UUID, Sinks.One<Boolean>>` — `await(callId, timeout)` registers a sink and resolves to `false`
-on timeout, distinct from a tool's own execution timeout; a new
+`Map<UUID, Sinks.One<Boolean>>` — `await(callId, timeout)` registers a sink and errors with a
+`TimeoutException` if `timeout` elapses first, distinct from a tool's own execution timeout and
+deliberately not a `false` fallback (a real live run caught the two cases — "denied" and "nobody
+answered" — being conflated when both once shared one `false` signal); a new
 `POST /api/v1/tool-calls/{callId}:confirm` resolves it, resuming the paused stream on the confirming
 request's thread. `SseEmitter.send(...)` calls in `ConversationController` are now wrapped in
 `synchronized (emitter)`, since this is the first place two different threads (the original stream,
 and the confirm-request's resuming thread) can call it. **Not resumable across an app restart** —
 the map is in-memory and the SSE connection dies with the process anyway; real cross-restart
 resumability is Phase 6/`workflow`'s job, named here rather than silently promised.
+
+**The map is bounded; registration stays eager, deliberately — post-roadmap review B4, issue #28.**
+`await` inserted into the map eagerly, before the returned `Mono` was ever subscribed, coupling the
+entry's lifetime to a caller obligation (`doFinally`-based cleanup) that nothing enforced; every real
+caller happened to subscribe, so nothing leaked in practice, but the invariant was implicit and the
+map had no size bound at all. `ai.tools.max-pending-confirmations` (default 100) fixes the size
+bound directly, rejecting a new `await` cleanly once that many calls are already pending — a minor
+denial-of-service consideration given the absence of rate limiting elsewhere in this codebase.
+
+Deferring registration to subscription (`Mono.defer`, the textbook fix for "a caller that never
+subscribes shouldn't leak") was tried and reverted: it broke a real caller. `handleToolCall` emits
+`tool_call_pending` before it ever subscribes to this `Mono` — sequenced behind it via `concatWith`
+— so a client fast enough to `POST :confirm` before the server's chain reached the subscription found
+nothing registered, and `ConversationToolConfirmationIntegrationTest` caught it flaking with a
+genuine 404, not a hypothetical. Eager registration is what makes "the client was told this call is
+confirmable" and "the server can resolve it" atomic; this codebase's one real caller always
+subscribes anyway, so the theoretical leak the deferred version guarded against isn't reachable in
+practice, while the race the deferred version introduced was.
 
 **Where concrete tools live.** `tools` stays domain-agnostic — Phase 7's MCP server re-exposes its
 registry, so it shouldn't need `knowledge` on its classpath to exist. Calculator (hand-written

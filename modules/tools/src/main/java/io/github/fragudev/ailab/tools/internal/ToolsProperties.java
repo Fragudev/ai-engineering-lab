@@ -16,6 +16,10 @@ import org.springframework.validation.annotation.Validated;
  *     /api/v1/tool-calls/{callId}:confirm} before resolving to {@code TIMEOUT} — distinct from a
  *     tool's own execution timeout
  * @param maxCallsPerTurn bounds the tool-calling loop; not a general agentic loop (Phase 6's job)
+ * @param maxPendingConfirmations caps how many tool calls may be simultaneously awaiting {@code
+ *     POST /api/v1/tool-calls/{callId}:confirm} at once — a minor denial-of-service consideration
+ *     given the absence of rate limiting (post-roadmap review B4); a reasoned starting bound, not
+ *     measured against any dataset (AGENTS.md rule 2)
  */
 @Validated
 @ConfigurationProperties(prefix = "ai.tools")
@@ -24,4 +28,5 @@ public record ToolsProperties(
         @NotNull List<String> grantedScopes,
         @NotNull Duration defaultTimeout,
         @NotNull Duration confirmationTimeout,
-        @Positive int maxCallsPerTurn) {}
+        @Positive int maxCallsPerTurn,
+        @Positive int maxPendingConfirmations) {}
