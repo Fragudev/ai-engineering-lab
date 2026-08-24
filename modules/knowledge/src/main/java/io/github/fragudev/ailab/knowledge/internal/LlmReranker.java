@@ -3,6 +3,7 @@ package io.github.fragudev.ailab.knowledge.internal;
 import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
+import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
 import io.github.fragudev.ailab.knowledge.SearchResult;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -42,27 +43,30 @@ public class LlmReranker implements Reranker {
             return List.of();
         }
 
-        String response;
-        try {
-            response = chatProvider
-                    .complete(new ChatRequest(List.of(
-                            ChatMessage.system(RANKING_INSTRUCTION),
-                            ChatMessage.user(buildPrompt(queryText, candidates)))))
-                    .content();
-        } catch (RuntimeException e) {
-            log.warn("LLM reranking failed, falling back to fused order", e);
-            return Reranker.assignFinalRank(limitTo(candidates, topK));
-        }
+        ChatRequest request = new ChatRequest(
+                List.of(ChatMessage.system(RANKING_INSTRUCTION), ChatMessage.user(buildPrompt(queryText, candidates))));
+        List<SearchResult> fusedFallback = Reranker.assignFinalRank(limitTo(candidates, topK));
 
-        List<Integer> order = parseOrder(response, candidates.size());
-        if (order == null) {
-            log.warn("LLM reranking returned an unparsable ordering ('{}'), falling back to fused order", response);
-            return Reranker.assignFinalRank(limitTo(candidates, topK));
-        }
-
-        List<SearchResult> reordered =
-                order.stream().map(i -> candidates.get(i - 1)).limit(topK).toList();
-        return Reranker.assignFinalRank(reordered);
+        return DegradingChatCall.call(
+                        chatProvider,
+                        request,
+                        content -> {
+                            List<Integer> order = parseOrder(content, candidates.size());
+                            if (order == null) {
+                                return null;
+                            }
+                            List<SearchResult> reordered = order.stream()
+                                    .map(i -> candidates.get(i - 1))
+                                    .limit(topK)
+                                    .toList();
+                            return Reranker.assignFinalRank(reordered);
+                        },
+                        fusedFallback,
+                        e -> log.warn("LLM reranking failed, falling back to fused order", e),
+                        content -> log.warn(
+                                "LLM reranking returned an unparsable ordering ('{}'), falling back to fused order",
+                                content))
+                .value();
     }
 
     private static String buildPrompt(String queryText, List<SearchResult> candidates) {
