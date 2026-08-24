@@ -177,6 +177,12 @@ entries; the evaluation harness detects retrieval quality regressions.
 Prompts and completions may contain anything the user typed or uploaded. Logging them verbatim is a
 data leak in any deployment.
 
+**This section was already correct; two others weren't.** `architecture.md` §12 and this document's
+own §4 STRIDE table both claimed redaction was live — corrected in the post-roadmap review to match
+this section rather than the other way around (issue #24). What's true today: nothing in this
+codebase currently logs or traces prompt/completion content (verified by grep), so there is no active
+leak — but nothing enforces that either, which is the actual gap below.
+
 *Mitigations (planned):* prompt and completion content redacted from logs and trace attributes by
 default; a local-only flag enables them for debugging, with a startup warning; trace attributes carry
 identifiers and counts, not content; error messages never echo prompt content to the client.
@@ -245,7 +251,7 @@ See [ADR-0011](adr/0011-mcp-tool-exposure-boundaries.md).
 | **Spoofing** | Unauthenticated API access | *Planned:* Spring Security on every endpoint except health and the UI shell; API key or signed JWT. Not built — no Spring Security dependency exists in this codebase, matching the single-user, no-multi-tenancy stance stated throughout this document. |
 | **Tampering** | Event or database modification | Kafka and PostgreSQL not exposed outside the Compose network; parameterised queries (Spring Data JPA); Flyway checksums |
 | **Repudiation** | No record of what happened | Every message, tool invocation and workflow step persisted with timestamps and correlation ids |
-| **Information disclosure** | Secrets in the repository or logs | No secrets committed; `.env` git-ignored; **gitleaks in CI, built Phase 8** (`.github/workflows/ci.yml`); redaction by default |
+| **Information disclosure** | Secrets in the repository or logs | No secrets committed; `.env` git-ignored; **gitleaks in CI, built Phase 8** (`.github/workflows/ci.yml`); prompt/completion redaction *planned, not built* — see T7, this row previously claimed it was live (issue #24) |
 | **Denial of service** | Resource exhaustion via uploads or queries | *Planned, not built:* upload size limits, rate limiting, connection pool bounds, consumer concurrency caps, and a circuit breaker on the model server — none of these are explicitly configured today; Spring Boot/Spring Kafka's own defaults apply, which are not the same as a deliberate limit. |
 | **Elevation of privilege** | Escaping the single-user role | No dynamic role assignment; tool scopes static and declared in code, never derived from input |
 
