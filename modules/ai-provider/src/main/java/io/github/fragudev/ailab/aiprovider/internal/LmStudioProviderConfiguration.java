@@ -30,6 +30,13 @@ class LmStudioProviderConfiguration {
                         .apiKey(apiKeyPlaceholder())
                         .model(properties.chatModel())
                         .build())
+                // Without this, ai.provider.lmstudio.timeout only bounded LmStudioChatProvider's own
+                // outer Mono.timeout() — the underlying OkHttp client kept its own, much shorter
+                // default read timeout, so a real 27B model's inter-token gaps (Phase 8's own
+                // measured p50 was 26s, well past OkHttp's default) killed the stream with
+                // ProviderUnavailableException before the configured timeout ever had a chance to
+                // fire. Found for real running the live evaluation for issue #29, not a guess.
+                .httpClientBuilderCustomizer(builder -> builder.timeout(properties.timeout()))
                 .build();
         return new LmStudioChatProvider(chatModel, properties.chatModel(), properties.timeout(), observationRegistry);
     }

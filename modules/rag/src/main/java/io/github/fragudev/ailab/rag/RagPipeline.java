@@ -173,8 +173,10 @@ public class RagPipeline {
 
     /** No candidates at all, or the closest vector match found is farther than the profile's
      * tolerance — see {@link RagProfile#maxVectorDistance()} for why this looks at raw vector
-     * distance rather than the fused score. */
-    private static boolean shouldAbstain(List<SearchResult> results, RagProfile profile) {
+     * distance rather than the fused score. Package-private (not {@code private}) so
+     * {@code RagPipelineAbstentionTest} can exercise the gate directly against real bge-m3 distance
+     * values without constructing the whole pipeline's dependency graph. */
+    static boolean shouldAbstain(List<SearchResult> results, RagProfile profile) {
         if (results.isEmpty()) {
             return true;
         }

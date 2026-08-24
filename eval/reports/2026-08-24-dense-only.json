@@ -1,0 +1,35 @@
+{
+  "generatedAt" : "2026-08-24T11:58:07.300Z",
+  "dataset" : {
+    "version" : "1",
+    "name" : "core"
+  },
+  "chatModel" : "qwen/qwen3.8-27b",
+  "profiles" : [ {
+    "ragProfile" : "dense-only",
+    "recallAtK" : {
+      "mean" : 1.0,
+      "spread" : 0.0
+    },
+    "mrr" : {
+      "mean" : 0.4333333333333333,
+      "spread" : 0.0
+    },
+    "citationPrecision" : {
+      "mean" : 0.65,
+      "spread" : 0.0
+    },
+    "citationRecall" : {
+      "mean" : 0.9,
+      "spread" : 0.0
+    },
+    "abstentionAccuracy" : {
+      "mean" : null,
+      "spread" : 0.0
+    },
+    "latencyP50Ms" : 51322,
+    "latencyP95Ms" : 59431,
+    "totalPromptTokens" : 23984,
+    "totalCompletionTokens" : 1415
+  } ]
+}
