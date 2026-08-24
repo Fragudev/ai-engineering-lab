@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.fragudev.ailab.shared.ProviderTimeoutException;
 import io.github.fragudev.ailab.shared.WorkflowRunId;
+import io.github.fragudev.ailab.shared.WorkflowStepId;
 import io.github.fragudev.ailab.workflow.WorkflowStepStatus;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
@@ -29,6 +30,47 @@ class StageRunnerTest {
     private final WorkflowsProperties properties =
             new WorkflowsProperties(true, 1, 1, 1, 2, Duration.ofSeconds(5), BASE_DELAY);
     private final StageRunner runner = new StageRunner(stepRepository, properties, metrics);
+
+    @Test
+    void succeedsOnFirstAttemptWithNoRetry() {
+        Map<String, Object> result = runner.run(
+                WorkflowRunId.generate(), 0, "retrieve", Map.of(), null, () -> StageOutcome.of(Map.of("ok", true)));
+
+        assertThat(result).containsEntry("ok", true);
+        WorkflowStep persisted = onlyStep();
+        assertThat(persisted.status()).isEqualTo(WorkflowStepStatus.SUCCEEDED);
+        assertThat(persisted.attempts()).isEqualTo(1);
+    }
+
+    /** Post-roadmap review issue #31: resuming a run reuses the step row an interrupted process left
+     * behind ({@code existing}, non-null) instead of creating a fresh one — {@code attempts} must
+     * continue from where the prior process left off, not reset to zero. */
+    @Test
+    void resumingWithAnExistingStepRowContinuesItsAttemptCountRatherThanResetting() {
+        WorkflowStep interrupted = new WorkflowStep(WorkflowStepId.generate(), WorkflowRunId.generate(), 0, "retrieve");
+        interrupted.markRunning(Map.of()); // simulates the attempt the interrupted process was mid-way through
+        assertThat(interrupted.attempts()).isEqualTo(1);
+
+        Map<String, Object> result = runner.run(
+                interrupted.runId(), 0, "retrieve", Map.of(), interrupted, () -> StageOutcome.of(Map.of("ok", true)));
+
+        assertThat(result).containsEntry("ok", true);
+        assertThat(interrupted.attempts()).isEqualTo(2);
+        assertThat(stepRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void exhaustingAllRetriesLeavesTheStepFailedWithTheLastErrorPersisted() {
+        assertThatThrownBy(() -> runner.run(WorkflowRunId.generate(), 0, "retrieve", Map.of(), null, () -> {
+                    throw new ProviderTimeoutException("lmstudio", Duration.ofSeconds(30));
+                }))
+                .isInstanceOf(StageFailedException.class);
+
+        WorkflowStep persisted = onlyStep();
+        assertThat(persisted.status()).isEqualTo(WorkflowStepStatus.FAILED);
+        assertThat(persisted.attempts()).isEqualTo(3); // stageRetryAttempts=2 in `properties` -> 3 total attempts
+        assertThat(persisted.output()).containsEntry("error", "Provider 'lmstudio' did not respond within PT30S");
+    }
 
     @Test
     void transientFailureSucceedsOnRetry() {
