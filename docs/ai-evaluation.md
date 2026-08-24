@@ -167,15 +167,15 @@ committed.
 
 ---
 
-## 8. A real finding from the first live-model run (Phase 8)
+## 8. A real finding from the first live-model run (Phase 8), recalibrated post-roadmap (issue #29)
 
-Every prior evaluation run — the ones in `eval/reports/` before Phase 8 — used the `recorded`
+Every evaluation run before Phase 8 — the ones in `eval/reports/` before this — used the `recorded`
 provider profile: fixture-replayed responses, and embeddings from `RecordedEmbeddingProvider`, which
 is hash-seeded to produce near-zero cosine distance for exact-text matches (deliberately, so
 integration tests can assert a retrieval hit deterministically). `RagProfiles`' `maxVectorDistance`
 thresholds (0.6 for `dense-only`/`hybrid`) were never checked against a *real* embedding model's
-actual distance distribution before this phase, because no prior phase had a live LM Studio run to
-check it against.
+actual distance distribution before Phase 8, because no prior phase had a live LM Studio run to check
+it against.
 
 Running the first-ever live evaluation against real `bge-m3` embeddings surfaced this immediately: a
 direct, unambiguous, answerable question against the corpus ("What is pgvector and what does it do?")
@@ -186,9 +186,33 @@ the pipeline abstained on every golden-dataset case, confirmed at both the harne
 against the running app, which returned "The knowledge base doesn't contain enough information to
 answer this question" for the same clearly-answerable query.
 
-**Not fixed in Phase 8** — recalibrating `maxVectorDistance` responsibly needs a broader sample than
-the single query checked here (ideally the full golden dataset's real distance distribution), and
-that is a `rag`/`RagProfiles` change, not a hardening-phase one. Named here as a real, load-bearing
-gap this project did not know it had until the first live embedding-model run: **`recorded`-profile
-integration tests passing is not evidence that the retrieval thresholds are calibrated for a real
-embedding model.**
+**Fixed post-roadmap, issue #29 (docs/adr/0013-rag-abstention-threshold.md).** Phase 8's single-query
+check wasn't a broad enough sample to recalibrate responsibly, so this was named an open gap rather
+than fixed there. The real recalibration measured vector distance across the full 28-case golden
+dataset plus four constructed, genuinely off-topic control queries (capital of France, a cake recipe,
+chess rules, general relativity — outside the pgvector/kafka-ui corpus entirely):
+
+| Set | n | Distance range |
+|---|---|---|
+| Golden dataset (all categories) | 28 | 0.2989–0.4682 |
+| Off-topic control queries | 4 | 0.5992–0.6866 |
+
+`maxVectorDistance` was set to **0.55** for all four profiles (they share `candidatesPerRetriever`/
+`topK`, so — confirmed live, not assumed — they all read the same raw vector-candidate pool for this
+gate; one threshold is correct, not four). A live evaluation run against the recalibrated threshold
+produced real, non-zero recall/citation metrics (`eval/reports/2026-08-24-dense-only.md`) — though
+scoped to 10 of 28 cases, `dense-only` only, after LM Studio's chat pipeline degraded mid-run on this
+hardware; the report's own "Coverage note" names that constraint plainly rather than hiding it or
+waiting indefinitely on unhealthy local infrastructure. `RagPipelineAbstentionTest`
+(`modules/rag/src/test/java/...`) now gives the gate itself direct, repeatable regression coverage
+against the real measured distance distribution — the first test coverage this gate has had since
+ADR-0008 introduced it.
+
+Two further real, load-bearing infrastructure bugs surfaced and were fixed while getting this live
+measurement, both named in full in ADR-0013 rather than only mentioned here: `ai.provider.lmstudio.
+timeout` never reached the underlying OkHttp client (only an outer reactive `Mono.timeout()`), and
+`EvalRunner` had no per-case fault isolation, so a single hung live-model call discarded an entire
+run's already-collected results (confirmed losing everything at 0, 3, 7, and 12 completed cases
+across four consecutive attempts before the fix). Named here because the same lesson from Phase 8
+applies again, one layer deeper: **a single live-model check surfacing a real gap is not the same as
+that gap being fixed responsibly — fixing it needs the broader measurement, done for real.**

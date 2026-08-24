@@ -23,13 +23,15 @@ that replaced it. The history of decisions is more informative than the current 
 | [0010](0010-agent-orchestration.md) | Agent orchestration: where determinism beats autonomy, and why | 6 |
 | [0011](0011-mcp-tool-exposure-boundaries.md) | Internal tools vs MCP vs external tool servers, with the security boundary of each | 7 |
 | [0012](0012-observability-conventions.md) | Observability conventions and GenAI semantic attributes | 8 |
+| [0013](0013-rag-abstention-threshold.md) | Recalibrating the RAG abstention threshold against a real embedding model | Post-roadmap review |
 
 ## Planned
 
 Written when the phase that needs them begins — not before. An ADR written ahead of the work it
 describes is a guess wearing a decision's clothes.
 
-None — Phase 8 is the last phase in the roadmap.
+None — Phase 8 is the last phase in the roadmap; post-roadmap-review ADRs are written as each
+finding's fix lands.
 
 ## Writing one
 

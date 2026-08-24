@@ -17,8 +17,10 @@ import io.github.fragudev.ailab.knowledge.RerankStrategy;
  *     {@code internal.ContextBuilder})
  * @param maxVectorDistance abstention gate: if the best vector-retriever match (across all returned
  *     candidates) is farther than this cosine distance, the pipeline declines to answer rather than
- *     generate from weak context. A starting heuristic, not tuned against a golden dataset (AGENTS.md
- *     rule 2) — Phase 4 is where that tuning happens.
+ *     generate from weak context. Calibrated against a real bge-m3 distance distribution
+ *     (post-roadmap review B5, issue #29, docs/ai-evaluation.md §8) — an earlier value (0.6) was
+ *     inherited from the {@code recorded} profile's hash-seeded near-zero-distance embeddings and
+ *     was never checked against a real embedding model until this.
  */
 public record RagProfile(
         String name,

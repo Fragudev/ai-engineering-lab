@@ -30,6 +30,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -39,6 +41,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class EvalRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(EvalRunner.class);
 
     private final DatasetLoader datasetLoader;
     private final GoldChunkResolver goldChunkResolver;
@@ -102,7 +106,21 @@ public class EvalRunner {
 
             List<CaseResult> outcomes = new ArrayList<>();
             for (EvalCase evalCase : cases) {
-                CaseResult result = runCase(evalCase, profile, config.runJudge());
+                CaseResult result;
+                try {
+                    result = runCase(evalCase, profile, config.runJudge());
+                } catch (RuntimeException e) {
+                    // A live provider (e.g. lmstudio) is a real, external fault boundary: a single slow or
+                    // unresponsive model call must not discard every other case's already-collected results.
+                    // Confirmed live against issue #29 — the same run repeatedly died on one hung case after
+                    // successfully completing a dozen others.
+                    log.warn(
+                            "Case '{}' failed for profile '{}', skipping: {}",
+                            evalCase.caseKey(),
+                            profile.name(),
+                            e.toString());
+                    continue;
+                }
                 outcomes.add(result);
                 resultRepository.save(new EvalResult(
                         EvalResultId.generate(),
