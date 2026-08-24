@@ -3,6 +3,7 @@ package io.github.fragudev.ailab.rag.internal;
 import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
+import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,17 +33,16 @@ public class QueryNormalizer {
         if (history.isEmpty()) {
             return query;
         }
-        try {
-            String rewritten = chatProvider
-                    .complete(new ChatRequest(
-                            List.of(ChatMessage.system(INSTRUCTION), ChatMessage.user(buildPrompt(history, query)))))
-                    .content()
-                    .trim();
-            return rewritten.isEmpty() ? query : rewritten;
-        } catch (RuntimeException e) {
-            log.warn("Query normalization failed, using the original query for retrieval", e);
-            return query;
-        }
+        ChatRequest request = new ChatRequest(
+                List.of(ChatMessage.system(INSTRUCTION), ChatMessage.user(buildPrompt(history, query))));
+        return DegradingChatCall.call(
+                        chatProvider,
+                        request,
+                        content -> content.trim().isEmpty() ? null : content.trim(),
+                        query,
+                        e -> log.warn("Query normalization failed, using the original query for retrieval", e),
+                        content -> {})
+                .value();
     }
 
     private static String buildPrompt(List<ChatMessage> history, String query) {

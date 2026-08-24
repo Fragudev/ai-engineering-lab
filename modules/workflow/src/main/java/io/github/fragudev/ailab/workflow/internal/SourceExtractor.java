@@ -3,7 +3,7 @@ package io.github.fragudev.ailab.workflow.internal;
 import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
-import io.github.fragudev.ailab.aiprovider.ChatResponse;
+import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
 import java.math.BigDecimal;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -33,19 +33,21 @@ class SourceExtractor {
     }
 
     ExtractResult extract(String query, String sourceContent) {
-        try {
-            ChatResponse response = chatProvider.complete(new ChatRequest(List.of(
-                    ChatMessage.system(INSTRUCTION),
-                    ChatMessage.user("Question: %s\n\nPassage: %s".formatted(query, sourceContent)))));
-            String facts = response.content().trim();
-            if (facts.isEmpty() || facts.equalsIgnoreCase("NONE")) {
-                return new ExtractResult(null, response.estimatedCostUsd());
-            }
-            return new ExtractResult(facts, response.estimatedCostUsd());
-        } catch (RuntimeException e) {
-            log.warn("Source extraction failed for one source, dropping it", e);
-            return new ExtractResult(null, BigDecimal.ZERO);
-        }
+        ChatRequest request = new ChatRequest(List.of(
+                ChatMessage.system(INSTRUCTION),
+                ChatMessage.user("Question: %s\n\nPassage: %s".formatted(query, sourceContent))));
+
+        DegradingChatCall.Outcome<String> outcome = DegradingChatCall.call(
+                chatProvider,
+                request,
+                content -> {
+                    String facts = content.trim();
+                    return (facts.isEmpty() || facts.equalsIgnoreCase("NONE")) ? null : facts;
+                },
+                null,
+                e -> log.warn("Source extraction failed for one source, dropping it", e),
+                content -> {});
+        return new ExtractResult(outcome.value(), outcome.costUsd());
     }
 
     record ExtractResult(@Nullable String facts, BigDecimal costUsd) {}

@@ -3,7 +3,7 @@ package io.github.fragudev.ailab.workflow.internal;
 import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
-import io.github.fragudev.ailab.aiprovider.ChatResponse;
+import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
 import java.math.BigDecimal;
 import java.util.List;
 import org.slf4j.Logger;
@@ -31,24 +31,24 @@ class SubQueryPlanner {
     }
 
     PlanResult plan(String query, int maxSubQueries) {
-        try {
-            ChatResponse response = chatProvider.complete(new ChatRequest(
-                    List.of(ChatMessage.system(INSTRUCTION.formatted(maxSubQueries)), ChatMessage.user(query))));
-            List<String> subQueries = response.content()
-                    .lines()
-                    .map(String::trim)
-                    .filter(line -> !line.isBlank())
-                    .limit(maxSubQueries)
-                    .toList();
-            if (subQueries.isEmpty()) {
-                log.warn("Sub-query planning returned nothing usable, falling back to the original query");
-                return new PlanResult(List.of(query), response.estimatedCostUsd());
-            }
-            return new PlanResult(subQueries, response.estimatedCostUsd());
-        } catch (RuntimeException e) {
-            log.warn("Sub-query planning failed, falling back to the original query", e);
-            return new PlanResult(List.of(query), BigDecimal.ZERO);
-        }
+        ChatRequest request = new ChatRequest(
+                List.of(ChatMessage.system(INSTRUCTION.formatted(maxSubQueries)), ChatMessage.user(query)));
+
+        DegradingChatCall.Outcome<List<String>> outcome = DegradingChatCall.call(
+                chatProvider,
+                request,
+                content -> {
+                    List<String> subQueries = content.lines()
+                            .map(String::trim)
+                            .filter(line -> !line.isBlank())
+                            .limit(maxSubQueries)
+                            .toList();
+                    return subQueries.isEmpty() ? null : subQueries;
+                },
+                List.of(query),
+                e -> log.warn("Sub-query planning failed, falling back to the original query", e),
+                content -> log.warn("Sub-query planning returned nothing usable, falling back to the original query"));
+        return new PlanResult(outcome.value(), outcome.costUsd());
     }
 
     record PlanResult(List<String> subQueries, BigDecimal costUsd) {}

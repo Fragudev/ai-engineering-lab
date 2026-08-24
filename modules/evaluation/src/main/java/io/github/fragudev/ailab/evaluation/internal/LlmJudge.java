@@ -3,6 +3,7 @@ package io.github.fragudev.ailab.evaluation.internal;
 import io.github.fragudev.ailab.aiprovider.ChatMessage;
 import io.github.fragudev.ailab.aiprovider.ChatProvider;
 import io.github.fragudev.ailab.aiprovider.ChatRequest;
+import io.github.fragudev.ailab.aiprovider.DegradingChatCall;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -51,21 +52,18 @@ public class LlmJudge {
     }
 
     private @Nullable Double score(String instruction, String prompt) {
-        String response;
-        try {
-            response = chatProvider
-                    .complete(new ChatRequest(List.of(ChatMessage.system(instruction), ChatMessage.user(prompt))))
-                    .content();
-        } catch (RuntimeException e) {
-            log.warn("LLM judge call failed", e);
-            return null;
-        }
-        Matcher matcher = SCORE_PATTERN.matcher(response);
-        if (!matcher.find()) {
-            log.warn("LLM judge returned an unparsable score ('{}')", response);
-            return null;
-        }
-        return Double.parseDouble(matcher.group(1));
+        ChatRequest request = new ChatRequest(List.of(ChatMessage.system(instruction), ChatMessage.user(prompt)));
+        return DegradingChatCall.call(
+                        chatProvider,
+                        request,
+                        content -> {
+                            Matcher matcher = SCORE_PATTERN.matcher(content);
+                            return matcher.find() ? Double.parseDouble(matcher.group(1)) : null;
+                        },
+                        null,
+                        e -> log.warn("LLM judge call failed", e),
+                        content -> log.warn("LLM judge returned an unparsable score ('{}')", content))
+                .value();
     }
 
     private static @Nullable Double normalize(@Nullable Double raw) {
