@@ -1,0 +1,21 @@
+README.md
+  s_222fea55b82233::t_12f4ee39774c7c 243
+docs/roadmap.md
+  s_222fea55b82233::t_c5f17799754297 571
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f7e328e687085987a283d0555f5a914a89bd0809",
+  "prompts": {},
+  "sessions": {
+    "s_222fea55b82233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9814de7e-05c3-45d9-8870-f7d6c297ac89",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
