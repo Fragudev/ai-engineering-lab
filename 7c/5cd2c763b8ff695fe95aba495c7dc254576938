@@ -1,0 +1,21 @@
+README.md
+  s_f6c2719e97e037::t_45c01dacdd28ef 12-17,53-91,248,287-298
+docs/roadmap.md
+  s_f6c2719e97e037::t_2aa715e866d52b 706-770
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7c5cd2c763b8ff695fe95aba495c7dc254576938",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
