@@ -1,0 +1,19 @@
+docs/improvement-plan.md
+  s_1d9355d0d2026a::t_00b1d513ea03b1 3-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "42297ba4112d87878a051615a46ecf35e99befc0",
+  "prompts": {},
+  "sessions": {
+    "s_1d9355d0d2026a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_1d9355d0d2026a",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
