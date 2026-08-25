@@ -1,0 +1,25 @@
+.github/workflows/ci.yml
+  s_5ac1fe29f76a9b::t_e3b2745064ab93 10-34
+.github/workflows/markdown-link-check-config.json
+  s_5ac1fe29f76a9b::t_753a1e0de28e68 1-10
+CONTRIBUTING.md
+  s_5ac1fe29f76a9b::t_3f0e4d98368a8c 36-42
+scripts/check-doc-anchors.mjs
+  s_5ac1fe29f76a9b::t_38862c61d66735 1-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0aaca34c74251e6bf90fc8db1d7a981579b3357a",
+  "prompts": {},
+  "sessions": {
+    "s_5ac1fe29f76a9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_5ac1fe29f76a9b",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
