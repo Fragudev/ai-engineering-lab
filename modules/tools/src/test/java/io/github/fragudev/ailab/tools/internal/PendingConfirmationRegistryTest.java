@@ -48,7 +48,7 @@ class PendingConfirmationRegistryTest {
     }
 
     @Test
-    void unresolvedCallTimesOutWithAnErrorNotAFalseValue() {
+    void unresolvedCallTimesOutWithAnErrorNotAFalseValue() throws Exception {
         // Deliberately an error, not a false fallback value: ToolCallingChatService needs to tell
         // "explicitly rejected" (DENIED) apart from "nobody answered in time" (TIMEOUT) — a real
         // live run caught this exact conflation when both cases shared one false signal.
@@ -59,8 +59,28 @@ class PendingConfirmationRegistryTest {
         assertThatThrownBy(() -> future.get(2, TimeUnit.SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .hasCauseInstanceOf(TimeoutException.class);
+
         // The timeout branch's doFinally must clean up too, not just the resolved/denied paths.
+        // Unlike those paths — where resolve() emits on this very thread, so the whole chain
+        // including doFinally has run by the time it returns — the timeout fires on a scheduler
+        // thread and doFinally runs *after* the error reaches the subscriber above. Asserting
+        // cleanup immediately therefore raced the runtime and failed intermittently in CI; waiting
+        // for the map to drain is what this always meant to assert.
+        awaitPendingDrained();
         assertThat(registry.resolve(callId, true)).isFalse();
+    }
+
+    /** Waits for {@link PendingConfirmationRegistry#await}'s {@code doFinally} cleanup, which is
+     * ordered after the terminal signal reaches the subscriber and so cannot be observed
+     * synchronously. Polls the map size rather than calling {@code resolve}: during the window
+     * before cleanup runs, {@code resolve} would emit a value into the sink and change the state
+     * being observed, turning the probe into a second source of flakiness. */
+    private void awaitPendingDrained() throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (registry.pendingCount() > 0 && System.nanoTime() < deadline) {
+            Thread.sleep(5);
+        }
+        assertThat(registry.pendingCount()).isZero();
     }
 
     @Test
