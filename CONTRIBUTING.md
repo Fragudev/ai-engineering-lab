@@ -33,6 +33,13 @@ docker compose -f infrastructure/docker-compose.yml up -d
 checks and the Testcontainers integration suite. It never calls a real model — the `recorded`
 provider profile replays fixtures, which is also what CI uses.
 
+If you touched documentation, CI checks that too — a renamed heading breaks an inbound `#anchor`
+silently, so it is verified rather than trusted. It runs locally in a second:
+
+```bash
+node scripts/check-doc-anchors.mjs                       # every "#anchor" points at a real heading
+```
+
 To run the AI evaluation suite against a live model:
 
 ```bash
