@@ -1,0 +1,41 @@
+docs/ai-evaluation.md
+  s_f6c2719e97e037::t_9af91776332aba 69,73-108,142-146,181
+eval/baseline.json
+  s_f6c2719e97e037::t_a86fcb60aaa0ca 2-5,7-134
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalRunner.java
+  s_f6c2719e97e037::t_24a09b594d0744 163-164,179,193-194,205-208,210-228,246-247
+README.md
+  s_f6c2719e97e037::t_988c3f20c1637c 304-310
+app/src/test/java/io/github/fragudev/ailab/EvaluationFlowIntegrationTest.java
+  s_f6c2719e97e037::t_89f5f162e71a78 171-179
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/CaseMetrics.java
+  s_f6c2719e97e037::t_ea8c314e32bd36 11,14-21,28,43-44
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/ProfileSummary.java
+  s_f6c2719e97e037::t_793b6d1ad3497b 7-25,32-33
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/AbstentionMetrics.java
+  s_f6c2719e97e037::t_9919c6b0f84f32 5-36,41-43
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/ReportWriter.java
+  s_f6c2719e97e037::t_ab693e4ada44ca 77-78,117-119,132-134,146,165-190
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/AbstentionMetricsTest.java
+  s_f6c2719e97e037::t_9ba195be865532 14,16,20-22,26-27,30-57
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/ReportWriterTest.java
+  s_f6c2719e97e037::t_f73b4ef204005d 56-76,119-121
+scripts/check-eval-regression.sh
+  s_f6c2719e97e037::t_25dbd4a27974d7 27,29-36,72,81,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5a346c206d6a107b123166384e8bc7c38cf3cb5e",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
