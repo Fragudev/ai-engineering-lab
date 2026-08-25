@@ -53,7 +53,27 @@ class ReportWriterTest {
         assertThat(profile.get("recallAtK").get("mean").asDouble()).isEqualTo(0.8);
         assertThat(profile.get("recallAtK").get("spread").asDouble()).isEqualTo(0.05);
         assertThat(profile.get("citationPrecision").get("mean").asDouble()).isEqualTo(0.9);
-        assertThat(profile.get("abstentionAccuracy").get("mean").asDouble()).isEqualTo(1.0);
+        assertThat(profile.get("gateAbstentionRate").get("mean").asDouble()).isEqualTo(1.0);
+        // Post-roadmap review issue #61: the two declining mechanisms are reported separately, and
+        // an unmeasured judge is null ("not measured"), never 0.0 ("declined incorrectly").
+        assertThat(profile.get("refusalCorrectness")).isNotNull();
+        assertThat(profile.get("refusalCorrectness").get("mean").isNull()).isTrue();
+        assertThat(profile.has("abstentionAccuracy")).isFalse();
+    }
+
+    /** The rendered report must carry the reading guide, because the single collapsed column it
+     * replaces was misread as a hallucination measurement in a real run (issue #61). */
+    @Test
+    void markdownExplainsHowToReadTheTwoDecliningColumns() throws IOException {
+        EvalReport report = reportWithOneProfile("dense-only", 0.8, 0.0, 0.9, 0.0);
+
+        String markdown = Files.readString(reportWriter.write(report, tempDir, false));
+
+        assertThat(markdown).contains("Gate abstention").contains("Refusal correctness");
+        assertThat(markdown).contains("A low value here is not a failure");
+        // The judge did not run in this fixture, so the report must say the column is unmeasured
+        // rather than leaving a bare "n/a" for a reader to interpret as a score of zero.
+        assertThat(markdown).contains("**not measured**, not zero");
     }
 
     @Test
@@ -96,6 +116,9 @@ class ReportWriterTest {
                 new RepeatedMetric(citationPrecisionMean, 0.0),
                 new RepeatedMetric(1.0, 0.0),
                 new RepeatedMetric(abstentionMean, 0.0),
+                // Refusal correctness: NaN, i.e. the judge did not run — this fixture's config sets
+                // runJudge=false, so "not measured" is the honest value and renders as "n/a".
+                new RepeatedMetric(Double.NaN, 0.0),
                 LatencyStats.of(List.of(Duration.ofMillis(10))),
                 5,
                 5,

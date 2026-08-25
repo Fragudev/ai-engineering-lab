@@ -301,9 +301,13 @@ three, MRR is not. That is the kind of answer the harness exists to produce.
 degraded under sustained sequential load and 38 calls failed (it answered a trivial prompt in 1.3s
 immediately afterwards, so this is load-related, not a crash). A single repetition means `± 0.00` is
 one sample, not determinism. The p95 figures for `hybrid`/`hybrid-rerank` measure that degradation,
-not the pipeline. **And `abstentionAccuracy` reads 0.00 while the model in fact declined correctly on
-every unanswerable case — a real defect in the metric, not the system, filed as
-[#61](https://github.com/Fragudev/ai-engineering-lab/issues/61).**
+not the pipeline. **And that report's `abstentionAccuracy` column reads 0.00 while the model in fact
+declined correctly on every unanswerable case — a defect in the metric, not the system
+([#61](https://github.com/Fragudev/ai-engineering-lab/issues/61), since fixed: declining is now
+reported as two columns, because the deterministic gate and the model declining in prose are
+different mechanisms measured by different instruments — see
+[`docs/ai-evaluation.md` §3](docs/ai-evaluation.md#3-metrics)). The committed report predates that
+fix and is left as it was run.**
 
 Before the abstention threshold was recalibrated ([#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)),
 every one of these numbers was `0`: the pipeline abstained on everything.

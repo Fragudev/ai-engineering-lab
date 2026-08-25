@@ -168,6 +168,14 @@ class EvaluationFlowIntegrationTest {
         ProfileSummary summary = report.profiles().get(0);
         assertThat(summary.ragProfile()).isEqualTo("dense-only");
         assertThat(summary.recallAtK().mean()).isEqualTo(1.0);
-        assertThat(summary.abstentionAccuracy().mean()).isEqualTo(1.0);
+        // Under the `recorded` profile the deterministic gate genuinely does fire for the
+        // unanswerable case: RecordedEmbeddingProvider is hash-seeded per exact string, so a question
+        // matching no seeded chunk lands far past maxVectorDistance. This is the gate half of
+        // declining, and it stays exact (post-roadmap review issue #61).
+        assertThat(summary.gateAbstentionRate().mean()).isEqualTo(1.0);
+        // The other half is judge-scored, and this run sets runJudge=false — so it must read as
+        // *not measured* (NaN -> "n/a" in the report), never as 0.0, which would claim the turn
+        // declined incorrectly.
+        assertThat(summary.refusalCorrectness().mean()).isNaN();
     }
 }

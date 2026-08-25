@@ -160,8 +160,8 @@ public class EvalRunner {
         double citationPrecision = CitationMetrics.precision(answer.citations(), goldChunkIds);
         double citationRecall = CitationMetrics.recall(answer.citations(), goldChunkIds);
 
-        Boolean abstentionCorrect =
-                evalCase.category() == EvalCaseCategory.UNANSWERABLE ? AbstentionMetrics.abstained(answer) : null;
+        Boolean gateAbstained =
+                evalCase.category() == EvalCaseCategory.UNANSWERABLE ? AbstentionMetrics.gateAbstained(answer) : null;
 
         Double judgeCorrectness = null;
         Double judgeFaithfulness = null;
@@ -176,7 +176,7 @@ public class EvalRunner {
                 mrr,
                 citationPrecision,
                 citationRecall,
-                abstentionCorrect,
+                gateAbstained,
                 latency,
                 answer.usage().promptTokens(),
                 answer.usage().completionTokens(),
@@ -190,7 +190,8 @@ public class EvalRunner {
         List<Double> mrrSamples = new ArrayList<>();
         List<Double> precisionSamples = new ArrayList<>();
         List<Double> citationRecallSamples = new ArrayList<>();
-        List<Double> abstentionSamples = new ArrayList<>();
+        List<Double> gateAbstentionSamples = new ArrayList<>();
+        List<Double> refusalCorrectnessSamples = new ArrayList<>();
         List<Duration> latencies = new ArrayList<>();
         long promptTokens = 0;
         long completionTokens = 0;
@@ -201,13 +202,30 @@ public class EvalRunner {
             precisionSamples.add(meanOf(repetition, r -> r.metrics().citationPrecision()));
             citationRecallSamples.add(meanOf(repetition, r -> r.metrics().citationRecall()));
 
-            List<Boolean> abstentions = repetition.stream()
-                    .map(r -> r.metrics().abstentionCorrect())
-                    .filter(Objects::nonNull)
+            // Both figures are computed over UNANSWERABLE cases only — gateAbstained is null for
+            // every other category, which is what identifies them here.
+            List<CaseResult> unanswerable = repetition.stream()
+                    .filter(r -> r.metrics().gateAbstained() != null)
                     .toList();
-            if (!abstentions.isEmpty()) {
-                abstentionSamples.add(
-                        abstentions.stream().filter(Boolean::booleanValue).count() / (double) abstentions.size());
+            if (!unanswerable.isEmpty()) {
+                gateAbstentionSamples.add(unanswerable.stream()
+                                .filter(r -> Boolean.TRUE.equals(r.metrics().gateAbstained()))
+                                .count()
+                        / (double) unanswerable.size());
+
+                // Judge-scored, so absent unless --judge ran. Left out of the sample list entirely
+                // rather than averaged in as zero: "not measured" and "declined incorrectly" are
+                // different claims, and RepeatedMetric renders an empty list as NaN -> "n/a".
+                List<Double> judged = unanswerable.stream()
+                        .map(r -> r.metrics().judgeCorrectness())
+                        .filter(Objects::nonNull)
+                        .toList();
+                if (!judged.isEmpty()) {
+                    refusalCorrectnessSamples.add(judged.stream()
+                            .mapToDouble(Double::doubleValue)
+                            .average()
+                            .orElse(Double.NaN));
+                }
             }
 
             repetition.forEach(r -> latencies.add(r.metrics().latency()));
@@ -225,7 +243,8 @@ public class EvalRunner {
                 RepeatedMetric.of(mrrSamples),
                 RepeatedMetric.of(precisionSamples),
                 RepeatedMetric.of(citationRecallSamples),
-                RepeatedMetric.of(abstentionSamples),
+                RepeatedMetric.of(gateAbstentionSamples),
+                RepeatedMetric.of(refusalCorrectnessSamples),
                 LatencyStats.of(latencies),
                 promptTokens,
                 completionTokens,

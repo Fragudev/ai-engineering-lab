@@ -74,7 +74,8 @@ public class ReportWriter {
         map.put("mrr", metricToMap(profile.mrr()));
         map.put("citationPrecision", metricToMap(profile.citationPrecision()));
         map.put("citationRecall", metricToMap(profile.citationRecall()));
-        map.put("abstentionAccuracy", metricToMap(profile.abstentionAccuracy()));
+        map.put("gateAbstentionRate", metricToMap(profile.gateAbstentionRate()));
+        map.put("refusalCorrectness", metricToMap(profile.refusalCorrectness()));
         map.put("latencyP50Ms", profile.latency().p50().toMillis());
         map.put("latencyP95Ms", profile.latency().p95().toMillis());
         map.put("totalPromptTokens", profile.totalPromptTokens());
@@ -113,9 +114,9 @@ public class ReportWriter {
                 .append("\n\n");
 
         md.append("## Profile comparison\n\n");
-        md.append("| Profile | Recall@k | MRR | Cite prec. | Cite recall | Abstention acc. | p50 (ms) | p95 (ms) "
-                + "| Prompt tokens | Completion tokens |\n");
-        md.append("|---|---|---|---|---|---|---|---|---|---|\n");
+        md.append("| Profile | Recall@k | MRR | Cite prec. | Cite recall | Gate abstention | Refusal correctness "
+                + "| p50 (ms) | p95 (ms) | Prompt tokens | Completion tokens |\n");
+        md.append("|---|---|---|---|---|---|---|---|---|---|---|\n");
         for (ProfileSummary profile : report.profiles()) {
             md.append("| ")
                     .append(profile.ragProfile())
@@ -128,7 +129,9 @@ public class ReportWriter {
                     .append(" | ")
                     .append(fmt(profile.citationRecall()))
                     .append(" | ")
-                    .append(fmt(profile.abstentionAccuracy()))
+                    .append(fmt(profile.gateAbstentionRate()))
+                    .append(" | ")
+                    .append(fmt(profile.refusalCorrectness()))
                     .append(" | ")
                     .append(profile.latency().p50().toMillis())
                     .append(" | ")
@@ -140,6 +143,7 @@ public class ReportWriter {
                     .append(" |\n");
         }
         md.append('\n');
+        md.append(howToReadDeclining(report.config().runJudge()));
 
         if (report.config().runJudge()) {
             md.append("## LLM judge\n\n");
@@ -155,6 +159,32 @@ public class ReportWriter {
         }
 
         md.append(limitations(recordedProfile));
+        return md.toString();
+    }
+
+    /** Emitted on every report, because the previous single "Abstention acc." column was read as a
+     * hallucination measurement and a 0.00 in it was read as total failure — when in fact the model
+     * had declined correctly on every case and the deterministic gate had correctly stayed silent
+     * (post-roadmap review issue #61). The two columns cannot be collapsed and cannot be read
+     * without this. */
+    private static String howToReadDeclining(boolean runJudge) {
+        StringBuilder md = new StringBuilder();
+        md.append("## How to read the two declining columns\n\n");
+        md.append("Both cover the `UNANSWERABLE` cases only, and they measure **different mechanisms**:\n\n");
+        md.append("- **Gate abstention** — how often the *deterministic* gate refused to generate, because the "
+                + "best vector match was farther than the profile's `maxVectorDistance`. Structural and exact. "
+                + "**A low value here is not a failure.** The gate is designed to catch \"this corpus does not "
+                + "cover the topic\", never \"this specific fact is not stated\" "
+                + "(docs/adr/0013-rag-abstention-threshold.md), so on a dataset whose unanswerable cases sit "
+                + "*inside* the corpus it is expected to stay silent.\n");
+        md.append("- **Refusal correctness** — whether the turn actually declined *correctly*, by whichever "
+                + "mechanism, including the model declining in its own prose. Scored by the judge against the "
+                + "refusal-shaped `expectedAnswer` the dataset provides for these cases.\n\n");
+        if (!runJudge) {
+            md.append("Refusal correctness reads `n/a` in this report because the judge was not run "
+                    + "(`--judge`). That is **not measured**, not zero — and it is the column that would tell "
+                    + "you whether the answers were right. Nothing else here does.\n\n");
+        }
         return md.toString();
     }
 
