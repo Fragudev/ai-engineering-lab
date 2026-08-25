@@ -1,5 +1,16 @@
 # Improvement plan
 
+> **Status: closed. All 17 `audit` issues raised from this review are merged and shipped** — every
+> finding in the priority summary below, S1 through O1. The findings are kept in present tense as
+> they were written, because the file/line evidence behind each one is the record of what was
+> actually wrong; read them as history, not as open work. What deliberately remains is the three
+> findings that never got an issue (D2, S5, O3) — each argued below as not worth acting on, or
+> already tracked in its own ADR.
+>
+> Left standing rather than deleted for the same reason an ADR is never rewritten to reverse itself:
+> a review that quietly vanishes once its findings are fixed leaves no evidence the codebase was ever
+> examined this closely.
+
 A post-roadmap review of the codebase, done after all 9 phases closed. Every finding below was
 verified against the actual code, not inferred from the documentation — file and line references are
 given so each one can be checked independently.
