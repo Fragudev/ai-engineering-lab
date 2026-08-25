@@ -703,6 +703,71 @@ Scope reductions, named rather than silently dropped:
 
 ---
 
+## Post-roadmap review — the phase after the phases
+
+**Status: complete.** 17 findings, 17 fixes, all merged. Full reasoning in
+[`improvement-plan.md`](improvement-plan.md); each finding is a closed issue (#21–#37) with a
+CI-verified pull request behind it.
+
+Phase 8 closed the roadmap. This project's own working rule — that a phase is done when it is
+*verified*, not when it is written — then raised an obvious question the roadmap itself could not
+answer: **does the finished thing actually hold up when someone reads it line by line?** A full
+review says no, not entirely. That answer is recorded here rather than quietly fixed, because a
+roadmap that ends with "all phases complete" and nothing after it is exactly the kind of claim this
+document spends nine phases refusing to make.
+
+**What it found:** 1 high-severity, 10 medium, 6 low.
+
+| Category | Findings | The load-bearing ones |
+|---|---|---|
+| Security | 4 | Stored XSS in the document list (#21); the tool confirmation gate and the executor consulting different sources of truth, so the gate could be bypassed (#22) |
+| Bugs | 5 | `StageRunner` retrying non-retryable errors with no backoff (#25); an NPE on a negative retry setting (#26); no validation on any configuration property (#27); the RAG abstention threshold miscalibrated against real embeddings (#29) |
+| Test coverage | 5 | Six of twelve modules with no tests at all (#30); the retry/resume core untested (#31); the dead-letter topic never asserted anywhere (#32); no coverage measurement (#33); no end-to-end tier (#34) |
+| Quality / observability | 3 | A testing-strategy table naming four tools absent from every `pom.xml` (#35); the call-the-model-and-degrade pattern duplicated five times (#36); silent LLM degradation with no metric (#37) |
+
+**The three findings that contradicted something already claimed** — the reason this review earned
+its place in the roadmap rather than a changelog entry:
+
+1. **Fixture-calibrated thresholds are not calibrated.** `maxVectorDistance` was an unmeasured `0.6`
+   carried over from the `recorded` provider's hash-seeded embeddings, where an exact-text match
+   scores ≈ 0 by construction. Against real `bge-m3` vectors an unambiguous, answerable question
+   scored ≈ 0.95, so the RAG pipeline abstained on every query — a total failure of the Phase 3
+   headline feature that every Phase 3 and Phase 4 test passed straight through. Recalibrated to
+   `0.55` against a real distribution measured over all 28 golden-dataset queries plus four
+   deliberately off-topic controls ([ADR-0013](adr/0013-rag-abstention-threshold.md)).
+2. **Documented tooling that was never added.** Four rows of `architecture.md` §11 named WireMock,
+   Toxiproxy, Error Prone and NullAway. None appears in any `pom.xml`. The coverage those rows
+   described was partly real by other means — hand-written fakes, Testcontainers — so the correction
+   was to describe the real mechanism, not to adopt four libraries retroactively to make a sentence
+   true (#35). Same class of gap Phase 8 already corrected for security scanning, found again one
+   table over.
+3. **A silent total failure with no counter behind it.** Phase 8's own live run had `LlmReranker`
+   falling back to fused order on *every* call, visible only as a `WARN` line. There is now an
+   `llm_degradation_total{component, reason}` counter across all five graceful-degradation sites
+   (#36 extracted the shared helper; #37 instrumented it).
+
+**Two further bugs surfaced only because the review insisted on a real live run** (#29), neither
+reachable from any fixture-based test: `ai.provider.lmstudio.timeout` never reached the underlying
+OkHttp client — it bounded only an outer reactive `Mono.timeout()`, so long generations died on the
+HTTP client's own much shorter default — and `EvalRunner` had no per-case fault isolation, so a
+single hung model call discarded an entire run's already-persisted results (confirmed losing
+everything at 0, 3, 7 and 12 completed cases across four consecutive attempts before the fix).
+
+**What it added, beyond fixes:** the project's first coverage measurement (88.0% instruction coverage,
+enforced at a real floor — see `architecture.md` §11 for why the enforced floor is narrower than the
+headline figure), its first automated end-to-end tier exercising the same journey `scripts/demo.sh`
+narrates by hand, its first `llm_degradation_total` metric, and the first real retrieval metrics this
+project has ever produced against a live embedding model
+([`eval/reports/2026-08-24-dense-only.md`](../eval/reports/2026-08-24-dense-only.md) — partial
+coverage, stated as such in the report's own coverage note).
+
+**What it deliberately did not change**, each argued rather than skipped: the response-DTO `from(...)`
+mappers (repetitive but explicit and boundary-appropriate — a mapping framework would cost more
+clarity than it saves), and the items in the table below, which the review restated without
+re-litigating.
+
+---
+
 ## Deliberately deferred
 
 Not oversights. Each is a decision with a reason, and each would be the first candidate if the
