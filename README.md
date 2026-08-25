@@ -284,17 +284,29 @@ retrieval number without the model and machine behind it is not reproducible.
 retrieval-threshold miscalibration this same live run surfaced
 ([`docs/ai-evaluation.md` §8](docs/ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8-recalibrated-post-roadmap-issue-29)).
 
-**Real retrieval metrics against a live model** (post-roadmap, [#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)):
-recall@k **1.00**, MRR **0.43**, citation precision **0.65**, citation recall **0.90**, p50 **51.3s**,
-p95 **59.4s** — [`eval/reports/2026-08-24-dense-only.md`](eval/reports/2026-08-24-dense-only.md).
+**Real profile comparison against a live model**
+([`eval/reports/2026-08-25-dense-only-hybrid-hybrid-rerank.md`](eval/reports/2026-08-25-dense-only-hybrid-hybrid-rerank.md),
+`qwen/qwen3.8-27b` + `bge-m3` on an Apple M4 Pro, 48 GB):
 
-**That report covers 10 of 28 golden-dataset cases, one profile, one repetition** — not the full
-three-profile comparison the harness is built for. LM Studio's chat pipeline degraded partway through
-the run on this hardware and stopped answering, confirmed with a direct isolated health check. The
-report says so in its own coverage note rather than presenting partial coverage as complete. These
-are the first non-zero retrieval numbers this project has ever produced against a real embedding
-model — before the threshold recalibration, every one of them was `0` because the pipeline abstained
-on everything.
+| Profile | Recall@k | MRR | Cite prec. | Cite recall | p50 |
+|---|---|---|---|---|---|
+| dense-only | 0.93 | 0.47 | 0.64 | 0.86 | 40.6s |
+| hybrid | 0.93 | **0.57** | 0.67 | 0.86 | 47.1s |
+| hybrid-rerank | 0.93 | 0.51 | 0.65 | 0.86 | 42.9s |
+
+Adding the lexical retriever changed *ranking*, not *what was found*: recall is identical across all
+three, MRR is not. That is the kind of answer the harness exists to produce.
+
+**Read with its caveats, which the report states in full:** 46 of 84 case-runs completed — LM Studio
+degraded under sustained sequential load and 38 calls failed (it answered a trivial prompt in 1.3s
+immediately afterwards, so this is load-related, not a crash). A single repetition means `± 0.00` is
+one sample, not determinism. The p95 figures for `hybrid`/`hybrid-rerank` measure that degradation,
+not the pipeline. **And `abstentionAccuracy` reads 0.00 while the model in fact declined correctly on
+every unanswerable case — a real defect in the metric, not the system, filed as
+[#61](https://github.com/Fragudev/ai-engineering-lab/issues/61).**
+
+Before the abstention threshold was recalibrated ([#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)),
+every one of these numbers was `0`: the pipeline abstained on everything.
 
 Two things this project will **not** do: publish performance figures that were not measured, and
 present LLM-as-judge scores as primary evidence. Judge scores are reported as a secondary,
