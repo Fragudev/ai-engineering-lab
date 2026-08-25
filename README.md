@@ -9,10 +9,12 @@ OpenTelemetry tracing, and an evaluation harness that produces numbers instead o
 
 Runs entirely on your own machine against a local model server. No API key required.
 
-> **Status: all 9 phases complete.** Every capability below is marked with its current state, and
-> nothing is claimed to work until it does. See [`docs/roadmap.md`](docs/roadmap.md) for the phase
-> plan and what each phase actually verified — including, in Phase 8, the doc/reality gaps that
-> phase's own review found and corrected.
+> **Status: all 9 phases complete, plus a full post-roadmap review.** Every capability below is
+> marked with its current state, and nothing is claimed to work until it does. See
+> [`docs/roadmap.md`](docs/roadmap.md) for the phase plan and what each phase actually verified —
+> including, in Phase 8, the doc/reality gaps that phase's own review found and corrected. The
+> roadmap ending was not the project ending: a subsequent line-by-line review found **17 real
+> defects** and fixed every one ([below](#the-post-roadmap-review)).
 
 ---
 
@@ -45,6 +47,45 @@ behind a set of architecture conversations.
 | Tool calling | Schema-validated registry with scoped authorization, timeouts and full tracing | Done — Phase 5 |
 | Agentic workflow | An explicit state machine with persisted state, resumable and compensable | Done — Phase 6 |
 | MCP | Tool registry exposed as an MCP server; external MCP servers consumed as clients | Done — Phase 7 |
+
+---
+
+## The post-roadmap review
+
+Every row above said "Done" when its phase closed. A line-by-line review afterwards found **17 real
+defects across them** — and fixing those is the part of this project worth reading.
+
+| Severity | Count | The ones that mattered most |
+|---|---|---|
+| High | 1 | Stored XSS in the document list ([#21](https://github.com/Fragudev/ai-engineering-lab/issues/21)) |
+| Medium | 10 | A confirmation-gate bypass — the gate and the executor consulted different sources of truth ([#22](https://github.com/Fragudev/ai-engineering-lab/issues/22)); `StageRunner` retrying non-retryable errors with no backoff ([#25](https://github.com/Fragudev/ai-engineering-lab/issues/25)); a RAG abstention threshold so miscalibrated the pipeline refused to answer **every single query** against a real embedding model ([#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)) |
+| Low | 6 | An NPE on a negative retry setting ([#26](https://github.com/Fragudev/ai-engineering-lab/issues/26)); no coverage measurement anywhere ([#33](https://github.com/Fragudev/ai-engineering-lab/issues/33)); no end-to-end test tier ([#34](https://github.com/Fragudev/ai-engineering-lab/issues/34)) |
+
+**Three findings are worth naming specifically, because each one contradicts something the project
+had already claimed about itself:**
+
+- **The abstention gate was calibrated against fixtures, not reality.** `RagProfiles`'
+  `maxVectorDistance` was an unmeasured `0.6` inherited from the `recorded` provider's hash-seeded
+  embeddings. Against real `bge-m3` vectors, an unambiguous, answerable question scored ≈ 0.95 — so
+  the headline RAG feature abstained on everything. Recalibrated to `0.55` from a real measurement
+  across all 28 golden-dataset queries plus four off-topic controls
+  ([ADR-0013](docs/adr/0013-rag-abstention-threshold.md)). **Passing `recorded`-profile integration
+  tests was never evidence the thresholds were right.**
+- **Four rows of the testing-strategy table named tools that were in no `pom.xml`** — WireMock,
+  Toxiproxy, Error Prone, NullAway. The coverage they described was partly real by other means; the
+  tooling column was fiction. Corrected rather than retrofitted by adopting four libraries to make a
+  sentence true ([#35](https://github.com/Fragudev/ai-engineering-lab/issues/35)).
+- **A headline feature failed silently in production conditions and nothing counted it.** During
+  Phase 8's live run, `LlmReranker` fell back to fused order on *every* call against a 27B model; the
+  only signal was a `WARN` line. There is now an `llm_degradation_total{component, reason}` counter
+  ([#37](https://github.com/Fragudev/ai-engineering-lab/issues/37)).
+
+What the review added, beyond fixes: the project's first coverage measurement (**88.0% instruction
+coverage**, measured — with the honest caveat that it leans on integration tests, not per-module unit
+tests), its first automated end-to-end tier, and unit coverage for six modules that had none.
+
+Full findings and reasoning: [`docs/improvement-plan.md`](docs/improvement-plan.md). Every issue is
+closed and every fix is a merged, CI-verified pull request.
 
 ---
 
@@ -204,6 +245,7 @@ scripts/              bootstrap, seed, fetch-corpus, eval, demo (see DEMO.md)
 |---|---|
 | [Architecture](docs/architecture.md) | Structure, boundaries, contracts, data model, sequence diagrams |
 | [Roadmap](docs/roadmap.md) | Phases, acceptance criteria, what is deliberately deferred |
+| [Improvement plan](docs/improvement-plan.md) | The post-roadmap review: all 17 findings, their reasoning, and what was deliberately *not* changed |
 | [ADRs](docs/adr/) | Why each significant decision was made, and what it cost |
 | [Threat model](docs/threat-model.md) | STRIDE + OWASP LLM Top 10, mitigations, accepted risk |
 | [Evaluation](docs/ai-evaluation.md) | Metrics, methodology, and where the methodology is weak |
@@ -241,6 +283,18 @@ retrieval number without the model and machine behind it is not reproducible.
 [`docs/roadmap.md`](docs/roadmap.md)'s Phase 8 section for the full methodology, including a real
 retrieval-threshold miscalibration this same live run surfaced
 ([`docs/ai-evaluation.md` §8](docs/ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8-recalibrated-post-roadmap-issue-29)).
+
+**Real retrieval metrics against a live model** (post-roadmap, [#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)):
+recall@k **1.00**, MRR **0.43**, citation precision **0.65**, citation recall **0.90**, p50 **51.3s**,
+p95 **59.4s** — [`eval/reports/2026-08-24-dense-only.md`](eval/reports/2026-08-24-dense-only.md).
+
+**That report covers 10 of 28 golden-dataset cases, one profile, one repetition** — not the full
+three-profile comparison the harness is built for. LM Studio's chat pipeline degraded partway through
+the run on this hardware and stopped answering, confirmed with a direct isolated health check. The
+report says so in its own coverage note rather than presenting partial coverage as complete. These
+are the first non-zero retrieval numbers this project has ever produced against a real embedding
+model — before the threshold recalibration, every one of them was `0` because the pipeline abstained
+on everything.
 
 Two things this project will **not** do: publish performance figures that were not measured, and
 present LLM-as-judge scores as primary evidence. Judge scores are reported as a secondary,
