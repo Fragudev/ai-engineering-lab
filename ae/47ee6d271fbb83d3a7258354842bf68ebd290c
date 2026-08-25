@@ -1,0 +1,21 @@
+modules/tools/src/main/java/io/github/fragudev/ailab/tools/internal/PendingConfirmationRegistry.java
+  s_b2f7df6891f854::t_6b5c27977fd982 68-82
+modules/tools/src/test/java/io/github/fragudev/ailab/tools/internal/PendingConfirmationRegistryTest.java
+  s_b2f7df6891f854::t_7ee472219f2c96 51,62,64-69,73-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ae47ee6d271fbb83d3a7258354842bf68ebd290c",
+  "prompts": {},
+  "sessions": {
+    "s_b2f7df6891f854": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_b2f7df6891f854",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
