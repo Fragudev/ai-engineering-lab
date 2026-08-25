@@ -65,4 +65,19 @@ public class PendingConfirmationRegistry {
         Sinks.EmitResult result = sink.tryEmitValue(approved);
         return result.isSuccess();
     }
+
+    /** How many calls are currently awaiting confirmation. Package-private purely as a test seam,
+     * mirroring the visibility relaxation ADR-0013 made to {@code RagPipeline.shouldAbstain} for the
+     * same reason: the behaviour is real and worth asserting, and there is no other honest way to
+     * observe it.
+     *
+     * <p>Specifically, {@link #await}'s cleanup runs in {@code doFinally}, which Reactor invokes
+     * <em>after</em> the terminal signal has already been propagated to the subscriber. On the
+     * timeout path that signal arrives on a scheduler thread, so the removal is ordered after a
+     * waiting test's {@code future.get()} has returned — not before it. {@link #resolve} cannot
+     * stand in as the probe, because calling it during that window emits a value into the sink and
+     * so changes the very state the test is trying to observe. Reading the map size does not. */
+    int pendingCount() {
+        return pending.size();
+    }
 }
