@@ -1,113 +1,134 @@
 {
-  "generatedAt" : "2026-08-22T09:14:14.746136Z",
-  "dataset" : {
-    "version" : "1",
-    "name" : "core"
+  "generatedAt": "2026-08-22T09:14:14.746136Z",
+  "dataset": {
+    "version": "1",
+    "name": "core"
   },
-  "chatModel" : "none",
-  "profiles" : [ {
-    "ragProfile" : "dense-only",
-    "recallAtK" : {
-      "mean" : 0.25,
-      "spread" : 0.0
+  "chatModel": "none",
+  "profiles": [
+    {
+      "ragProfile": "dense-only",
+      "recallAtK": {
+        "mean": 0.25,
+        "spread": 0.0
+      },
+      "mrr": {
+        "mean": 0.12986111111111112,
+        "spread": 0.0
+      },
+      "citationPrecision": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "citationRecall": {
+        "mean": 0.0,
+        "spread": 0.0
+      },
+      "gateAbstentionRate": {
+        "mean": 1.0,
+        "spread": 0.0
+      },
+      "refusalCorrectness": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "latencyP50Ms": 6,
+      "latencyP95Ms": 9,
+      "totalPromptTokens": 0,
+      "totalCompletionTokens": 0
     },
-    "mrr" : {
-      "mean" : 0.12986111111111112,
-      "spread" : 0.0
+    {
+      "ragProfile": "hybrid",
+      "recallAtK": {
+        "mean": 0.375,
+        "spread": 0.0
+      },
+      "mrr": {
+        "mean": 0.20972222222222223,
+        "spread": 0.0
+      },
+      "citationPrecision": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "citationRecall": {
+        "mean": 0.0,
+        "spread": 0.0
+      },
+      "gateAbstentionRate": {
+        "mean": 1.0,
+        "spread": 0.0
+      },
+      "refusalCorrectness": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "latencyP50Ms": 8,
+      "latencyP95Ms": 13,
+      "totalPromptTokens": 0,
+      "totalCompletionTokens": 0
     },
-    "citationPrecision" : {
-      "mean" : null,
-      "spread" : 0.0
+    {
+      "ragProfile": "hybrid-rerank",
+      "recallAtK": {
+        "mean": 0.20833333333333334,
+        "spread": 0.0
+      },
+      "mrr": {
+        "mean": 0.11805555555555557,
+        "spread": 0.0
+      },
+      "citationPrecision": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "citationRecall": {
+        "mean": 0.0,
+        "spread": 0.0
+      },
+      "gateAbstentionRate": {
+        "mean": 1.0,
+        "spread": 0.0
+      },
+      "refusalCorrectness": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "latencyP50Ms": 7,
+      "latencyP95Ms": 9,
+      "totalPromptTokens": 0,
+      "totalCompletionTokens": 0
     },
-    "citationRecall" : {
-      "mean" : 0.0,
-      "spread" : 0.0
-    },
-    "abstentionAccuracy" : {
-      "mean" : 1.0,
-      "spread" : 0.0
-    },
-    "latencyP50Ms" : 6,
-    "latencyP95Ms" : 9,
-    "totalPromptTokens" : 0,
-    "totalCompletionTokens" : 0
-  }, {
-    "ragProfile" : "hybrid",
-    "recallAtK" : {
-      "mean" : 0.375,
-      "spread" : 0.0
-    },
-    "mrr" : {
-      "mean" : 0.20972222222222223,
-      "spread" : 0.0
-    },
-    "citationPrecision" : {
-      "mean" : null,
-      "spread" : 0.0
-    },
-    "citationRecall" : {
-      "mean" : 0.0,
-      "spread" : 0.0
-    },
-    "abstentionAccuracy" : {
-      "mean" : 1.0,
-      "spread" : 0.0
-    },
-    "latencyP50Ms" : 8,
-    "latencyP95Ms" : 13,
-    "totalPromptTokens" : 0,
-    "totalCompletionTokens" : 0
-  }, {
-    "ragProfile" : "hybrid-rerank",
-    "recallAtK" : {
-      "mean" : 0.20833333333333334,
-      "spread" : 0.0
-    },
-    "mrr" : {
-      "mean" : 0.11805555555555557,
-      "spread" : 0.0
-    },
-    "citationPrecision" : {
-      "mean" : null,
-      "spread" : 0.0
-    },
-    "citationRecall" : {
-      "mean" : 0.0,
-      "spread" : 0.0
-    },
-    "abstentionAccuracy" : {
-      "mean" : 1.0,
-      "spread" : 0.0
-    },
-    "latencyP50Ms" : 7,
-    "latencyP95Ms" : 9,
-    "totalPromptTokens" : 0,
-    "totalCompletionTokens" : 0
-  }, {
-    "ragProfile" : "hybrid-rerank-llm",
-    "recallAtK" : {
-      "mean" : 0.375,
-      "spread" : 0.0
-    },
-    "mrr" : {
-      "mean" : 0.20972222222222223,
-      "spread" : 0.0
-    },
-    "citationPrecision" : {
-      "mean" : null,
-      "spread" : 0.0
-    },
-    "citationRecall" : {
-      "mean" : 0.0,
-      "spread" : 0.0
-    },
-    "abstentionAccuracy" : {
-      "mean" : 1.0,
-      "spread" : 0.0
-    },
-    "latencyP50Ms" : 7,
-    "latencyP95Ms" : 9,
-    "totalPromptTokens" : 0,
-    "totalCompletionTokens" : 0
-  } ]
+    {
+      "ragProfile": "hybrid-rerank-llm",
+      "recallAtK": {
+        "mean": 0.375,
+        "spread": 0.0
+      },
+      "mrr": {
+        "mean": 0.20972222222222223,
+        "spread": 0.0
+      },
+      "citationPrecision": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "citationRecall": {
+        "mean": 0.0,
+        "spread": 0.0
+      },
+      "gateAbstentionRate": {
+        "mean": 1.0,
+        "spread": 0.0
+      },
+      "refusalCorrectness": {
+        "mean": null,
+        "spread": 0.0
+      },
+      "latencyP50Ms": 7,
+      "latencyP95Ms": 9,
+      "totalPromptTokens": 0,
+      "totalCompletionTokens": 0
+    }
+  ]
 }

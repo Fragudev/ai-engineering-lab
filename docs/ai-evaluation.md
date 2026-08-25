@@ -66,12 +66,46 @@ Computable without a model. Reproducible, cheap, and defensible.
 | **MRR** | Mean reciprocal rank of the first gold chunk | Right chunks retrieved but ranked poorly — a reranking problem |
 | **Citation precision** | Share of cited chunks that are gold | The model cites sources that do not support the claim |
 | **Citation recall** | Share of gold chunks actually cited | Answers correct but under-attributed |
-| **Abstention accuracy** | Correct declines on unanswerable cases | Hallucination rate, measured directly |
+| **Gate abstention rate** | Share of unanswerable cases where the *deterministic* gate refused to generate | The retrieval threshold moved — **not** a hallucination rate, see below |
 | **p50 / p95 latency** | End to end and per pipeline stage | Where the time goes |
 | **Token cost** | Prompt and completion tokens per answer | Context bloat, usually from an over-large top-k |
 
-Abstention accuracy is the closest thing here to a direct hallucination measurement, which is why the
-unanswerable category exists at all.
+#### What the declining metrics can and cannot observe
+
+This table used to carry a single **"Abstention accuracy"** column described as *"hallucination rate,
+measured directly"*. It was not, and the difference cost a real misreading — recorded here rather
+than quietly corrected (post-roadmap review issue #61).
+
+A turn can decline in **two** ways, and only one of them is structurally observable:
+
+1. **The deterministic gate refuses to generate**, because the best vector match is farther than the
+   profile's `maxVectorDistance`. This is exact: the gate is the only path that sets `model = "none"`,
+   which is what `AbstentionMetrics` detects — deliberately structural, never by matching the canned
+   message text.
+2. **The gate stays silent and the model declines in its own prose** — *"the retrieved documentation
+   doesn't mention a maximum message size…"*. There is **no structural signal** for this. None.
+
+In the first full three-profile live run, all four unanswerable cases were answered **correctly** by
+the model declining on its own, while the old single column read **0.00** — which looks exactly like
+total hallucination failure. The gate was right to stay silent: those cases sit *inside* the corpus
+topically (vector distances near 0.38 against a 0.55 threshold), and
+[ADR-0013](adr/0013-rag-abstention-threshold.md) is explicit that the gate catches *"this corpus does
+not cover the topic"*, never *"this specific fact is not stated"*.
+
+So the metric is now split, and each half says what instrument produced it:
+
+- **Gate abstention rate** — structural, exact, always available. **A low value is the expected
+  result** on a dataset whose unanswerable cases are in-corpus. It measures where the retrieval
+  threshold sits, not whether the system hallucinated.
+- **Refusal correctness** — the judge's correctness score restricted to unanswerable cases, where the
+  dataset's `expectedAnswer` is itself a refusal (*"The documentation does not state a maximum message
+  size…"*). This is the figure that answers *did the turn decline correctly*, by whichever mechanism.
+  It requires `--judge`, and reads `n/a` — **not measured**, not zero — when the judge did not run.
+  It inherits every weakness stated below about judge scores: a weak instrument is still the only one
+  here that can read prose.
+
+**Neither column is a hallucination rate.** The honest summary is that this harness measures
+hallucination on unanswerable questions *indirectly*, through a model-graded score, and says so.
 
 ### Secondary: model-graded, with caveats
 
@@ -105,11 +139,11 @@ mechanism that makes retrieval quality a measured property rather than an opinio
 
 Illustrative output shape — **these are column headers, not results:**
 
-| Profile | Recall@5 | MRR | Cite prec. | Abstention | p95 (ms) | Tokens/answer |
-|---|---|---|---|---|---|---|
-| `dense-only` | — | — | — | — | — | — |
-| `hybrid` | — | — | — | — | — | — |
-| `hybrid-rerank` | — | — | — | — | — | — |
+| Profile | Recall@5 | MRR | Cite prec. | Gate abstention | Refusal correctness | p95 (ms) | Tokens/answer |
+|---|---|---|---|---|---|---|---|
+| `dense-only` | — | — | — | — | — | — | — |
+| `hybrid` | — | — | — | — | — | — | — |
+| `hybrid-rerank` | — | — | — | — | — | — | — |
 
 This is what justifies the hybrid-retrieval decision (ADR-0007, [planned for Phase 3](adr/README.md))
 after the fact. Hybrid search *should* outperform dense-only
@@ -144,7 +178,7 @@ cannot detect model quality changes, only regressions in retrieval and pipeline 
 larger source of accidental breakage.
 
 The build fails on a regression beyond threshold: recall@5 down more than 5 points, citation
-precision down more than 5 points, or abstention accuracy down more than 10 points. A retrieval
+precision down more than 5 points, or gate abstention down more than 10 points. A retrieval
 change that quietly degrades quality should break the build the same way a failing unit test does.
 
 Live-model evaluation is a manual step, run before any release or portfolio update, with its report

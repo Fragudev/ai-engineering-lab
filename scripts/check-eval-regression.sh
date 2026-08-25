@@ -24,8 +24,16 @@ if [ ! -f "${BASELINE}" ]; then
   exit 0
 fi
 
-# docs/ai-evaluation.md §6: recall@5 down >5pts, citation precision down >5pts, abstention accuracy
+# docs/ai-evaluation.md §6: recall@5 down >5pts, citation precision down >5pts, gate abstention
 # down >10pts. Metrics are 0..1 fractions here, so e.g. "5pts" means a drop of 0.05.
+#
+# Gates on gateAbstentionRate, renamed from abstentionAccuracy in post-roadmap review issue #61.
+# What it watches is unchanged and still worth watching: a sudden drop means the deterministic
+# retrieval gate stopped firing where it used to, i.e. the threshold moved. It is NOT a
+# hallucination rate — see docs/ai-evaluation.md §3. The metric that would catch a hallucination
+# regression is refusalCorrectness, which is judge-scored and therefore absent unless --judge ran,
+# so it is deliberately not gated here: a nightly job cannot fail a build on a number that is
+# usually not measured.
 RECALL_THRESHOLD=0.05
 CITATION_PRECISION_THRESHOLD=0.05
 ABSTENTION_THRESHOLD=0.10
@@ -61,7 +69,7 @@ while IFS= read -r profile; do
 
   baseline_recall="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .recallAtK.mean' "${BASELINE}")"
   baseline_precision="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .citationPrecision.mean' "${BASELINE}")"
-  baseline_abstention="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .abstentionAccuracy.mean' "${BASELINE}")"
+  baseline_abstention="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .gateAbstentionRate.mean' "${BASELINE}")"
 
   if [ -z "${baseline_recall}" ]; then
     echo "check-eval-regression: [${profile}] not present in baseline — skipping (first run for this profile)."
@@ -70,11 +78,11 @@ while IFS= read -r profile; do
 
   new_recall="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .recallAtK.mean' "${REPORT}")"
   new_precision="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .citationPrecision.mean' "${REPORT}")"
-  new_abstention="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .abstentionAccuracy.mean' "${REPORT}")"
+  new_abstention="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .gateAbstentionRate.mean' "${REPORT}")"
 
   check "${profile}" "recall@k" "${baseline_recall}" "${new_recall}" "${RECALL_THRESHOLD}"
   check "${profile}" "citation precision" "${baseline_precision}" "${new_precision}" "${CITATION_PRECISION_THRESHOLD}"
-  check "${profile}" "abstention accuracy" "${baseline_abstention}" "${new_abstention}" "${ABSTENTION_THRESHOLD}"
+  check "${profile}" "gate abstention" "${baseline_abstention}" "${new_abstention}" "${ABSTENTION_THRESHOLD}"
 done <<< "${PROFILES}"
 
 if [ "${FAILED}" -eq 1 ]; then
