@@ -7,6 +7,31 @@ on:
     branches: [main]
 
 jobs:
+  # This project's documentation is load-bearing: the roadmap's phase index and the improvement
+  # plan's priority table are entirely anchor links, and the ADRs cross-reference each other
+  # constantly. A renamed heading or a moved file breaks that navigation silently — the reader lands
+  # at the top of a page with no error anywhere. Two steps because they cover different halves:
+  # markdown-link-check resolves URLs and file paths but deliberately skips same-file "#fragment"
+  # links, which is exactly where the anchor script picks up. It caught two already-stale anchors on
+  # its first run (ai-evaluation.md §8, renamed when issue #29 landed).
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: "yes"
+          use-verbose-mode: "yes"
+          config-file: ".github/workflows/markdown-link-check-config.json"
+          # The corpus is fetched at run time, not committed; its third-party documents link against
+          # the upstream repository's own layout, which is not this repository's to satisfy.
+          folder-path: "docs, eval"
+          file-path: "./README.md, ./CONTRIBUTING.md, ./AGENTS.md, ./DEMO.md"
+      - name: Check documentation anchors
+        run: node scripts/check-doc-anchors.mjs
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30

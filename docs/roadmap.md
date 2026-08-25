@@ -568,7 +568,7 @@ independently converged on.
          corpus** — the retrieval-abstention threshold (`RagProfiles.maxVectorDistance = 0.6`) was
          never checked against a real embedding model before this phase; real `bge-m3` distances for
          this corpus run ≈0.95. A real, load-bearing gap, written up in full in
-         [`docs/ai-evaluation.md` §8](ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8)
+         [`docs/ai-evaluation.md` §8](ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8-recalibrated-post-roadmap-issue-29)
          — not fixed here (needs a broader sample to recalibrate responsibly; out of a hardening
          phase's scope), but real and now documented rather than silently absent.
 
