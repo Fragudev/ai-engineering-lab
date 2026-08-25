@@ -240,7 +240,7 @@ retrieval number without the model and machine behind it is not reproducible.
 (median 26.3s). Five samples, stated as median/mean/range rather than a manufactured p50/p95 — see
 [`docs/roadmap.md`](docs/roadmap.md)'s Phase 8 section for the full methodology, including a real
 retrieval-threshold miscalibration this same live run surfaced
-([`docs/ai-evaluation.md` §8](docs/ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8)).
+([`docs/ai-evaluation.md` §8](docs/ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8-recalibrated-post-roadmap-issue-29)).
 
 Two things this project will **not** do: publish performance figures that were not measured, and
 present LLM-as-judge scores as primary evidence. Judge scores are reported as a secondary,
