@@ -6,6 +6,22 @@
 - **Hardware:** Apple M4 Pro, 48GB RAM
 - **Repetitions per profile:** 1
 
+> [!WARNING]
+> **Superseded, and its diagnosis was wrong.** Caveat 1 below blames this run's 38 skipped cases on
+> *"LM Studio degrading under sustained sequential load"*. That was incorrect. The real cause was
+> [#65](https://github.com/Fragudev/ai-engineering-lab/issues/65): `ai.provider.lmstudio.timeout`
+> was inert, and every call was capped at ~60s by Spring AI's own `DEFAULT_TIMEOUT`. With that fixed
+> and nothing else changed, the same dataset on the same hardware completed **84 of 84**
+> (`2026-08-26-dense-only-hybrid-hybrid-rerank.md`).
+>
+> **The figures below are also survivorship-biased.** The 38 dropped cases were the slowest ones —
+> disproportionately the harder questions — so scoring only what finished inside an invisible cap
+> flattered every number here. Recall@k fell from 0.93 across all three profiles to 0.81/0.85/0.71
+> once every case actually ran.
+>
+> Left unedited as the record of what was measured and concluded at the time. The successor report
+> carries the numbers to use.
+
 ## Coverage and how to read these numbers
 
 **This is the project's first real three-profile comparison against a live model.** The prior report

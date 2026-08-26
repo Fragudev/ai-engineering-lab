@@ -1,0 +1,99 @@
+{
+  "generatedAt" : "2026-08-26T09:12:17.754736Z",
+  "dataset" : {
+    "name" : "core",
+    "version" : "1"
+  },
+  "chatModel" : "qwen/qwen3.8-27b",
+  "profiles" : [ {
+    "ragProfile" : "dense-only",
+    "recallAtK" : {
+      "mean" : 0.8125,
+      "spread" : 0.0
+    },
+    "mrr" : {
+      "mean" : 0.46319444444444446,
+      "spread" : 0.0
+    },
+    "citationPrecision" : {
+      "mean" : 0.52,
+      "spread" : 0.0
+    },
+    "citationRecall" : {
+      "mean" : 0.6875,
+      "spread" : 0.0
+    },
+    "gateAbstentionRate" : {
+      "mean" : 0.0,
+      "spread" : 0.0
+    },
+    "refusalCorrectness" : {
+      "mean" : null,
+      "spread" : 0.0
+    },
+    "latencyP50Ms" : 57923,
+    "latencyP95Ms" : 291325,
+    "totalPromptTokens" : 88698,
+    "totalCompletionTokens" : 15390
+  }, {
+    "ragProfile" : "hybrid",
+    "recallAtK" : {
+      "mean" : 0.8541666666666666,
+      "spread" : 0.0
+    },
+    "mrr" : {
+      "mean" : 0.5236111111111111,
+      "spread" : 0.0
+    },
+    "citationPrecision" : {
+      "mean" : 0.48,
+      "spread" : 0.0
+    },
+    "citationRecall" : {
+      "mean" : 0.6875,
+      "spread" : 0.0
+    },
+    "gateAbstentionRate" : {
+      "mean" : 0.0,
+      "spread" : 0.0
+    },
+    "refusalCorrectness" : {
+      "mean" : null,
+      "spread" : 0.0
+    },
+    "latencyP50Ms" : 71552,
+    "latencyP95Ms" : 267239,
+    "totalPromptTokens" : 98160,
+    "totalCompletionTokens" : 15550
+  }, {
+    "ragProfile" : "hybrid-rerank",
+    "recallAtK" : {
+      "mean" : 0.7083333333333334,
+      "spread" : 0.0
+    },
+    "mrr" : {
+      "mean" : 0.4263888888888889,
+      "spread" : 0.0
+    },
+    "citationPrecision" : {
+      "mean" : 0.483974358974359,
+      "spread" : 0.0
+    },
+    "citationRecall" : {
+      "mean" : 0.6458333333333334,
+      "spread" : 0.0
+    },
+    "gateAbstentionRate" : {
+      "mean" : 0.0,
+      "spread" : 0.0
+    },
+    "refusalCorrectness" : {
+      "mean" : null,
+      "spread" : 0.0
+    },
+    "latencyP50Ms" : 59119,
+    "latencyP95Ms" : 271524,
+    "totalPromptTokens" : 90465,
+    "totalCompletionTokens" : 15170
+  } ]
+}
