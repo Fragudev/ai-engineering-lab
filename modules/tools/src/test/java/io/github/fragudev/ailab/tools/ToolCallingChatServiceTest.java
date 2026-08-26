@@ -61,6 +61,60 @@ class ToolCallingChatServiceTest {
         assertThat(chunks.get(chunks.size() - 1).aggregate().content()).isEqualTo("Hello there.");
     }
 
+    /** Issue #62 (post-roadmap review): the system prompt demands the envelope be the entire response
+     * with "nothing before or after it", and models do not comply. Measured over a full 84-case live
+     * run, 4 answers put prose in front of the envelope — parsing the whole content as JSON threw, so
+     * the tool call was <b>never executed</b> and the raw envelope was delivered as the answer. The
+     * call must now be found and run, and the envelope must not reach the user. */
+    @Test
+    void anEnvelopePrecededByProseStillExecutesTheToolAndNeverReachesTheUser() {
+        AtomicInteger executions = new AtomicInteger();
+        Tool searchTool = fakeTool("weather-like", Set.of(), false, executions);
+        ScriptedChatProvider provider = new ScriptedChatProvider(
+                FALLBACK_CAPABILITIES,
+                "Let me look that up for you.\n\n{\"tool_call\":{\"name\":\"weather-like\",\"arguments\":{}}}",
+                "It is sunny.");
+        ToolCallingChatService service = newService(properties, List.of(searchTool));
+
+        List<ToolChatChunk> chunks = service.stream(
+                        provider,
+                        history("weather?"),
+                        List.of(searchTool.definition()),
+                        ToolCallOrigin.PLAIN_CHAT,
+                        null)
+                .collectList()
+                .block(Duration.ofSeconds(5));
+
+        assertThat(executions).hasValue(1);
+        ToolChatChunk last = chunks.get(chunks.size() - 1);
+        assertThat(last.aggregate().content()).isEqualTo("It is sunny.").doesNotContain("tool_call");
+    }
+
+    /** Issue #62, the other route to the same leak: once {@code max-calls-per-turn} (3 here) is spent
+     * the loop stops parsing envelopes, but the model — primed by its own envelope-shaped turns in the
+     * history — keeps emitting them. 6 of the 10 leaks in the live run arrived this way. The budget
+     * must still be enforced, and the raw protocol JSON must still not reach the user. */
+    @Test
+    void anEnvelopeArrivingAfterTheToolBudgetIsSpentIsStrippedNotDelivered() {
+        AtomicInteger executions = new AtomicInteger();
+        Tool tool = fakeTool("weather-like", Set.of(), false, executions);
+        String envelope = "{\"tool_call\":{\"name\":\"weather-like\",\"arguments\":{}}}";
+        ScriptedChatProvider provider = new ScriptedChatProvider(
+                FALLBACK_CAPABILITIES, envelope, envelope, envelope, envelope + "\n\nI could not look that up.");
+        ToolCallingChatService service = newService(properties, List.of(tool));
+
+        List<ToolChatChunk> chunks = service.stream(
+                        provider, history("weather?"), List.of(tool.definition()), ToolCallOrigin.PLAIN_CHAT, null)
+                .collectList()
+                .block(Duration.ofSeconds(5));
+
+        assertThat(executions).hasValue(3);
+        ToolChatChunk last = chunks.get(chunks.size() - 1);
+        assertThat(last.aggregate().content())
+                .isEqualTo("I could not look that up.")
+                .doesNotContain("tool_call");
+    }
+
     @Test
     void scopeDeniedShortCircuitsWithoutExecutingTheTool() {
         AtomicInteger executions = new AtomicInteger();
