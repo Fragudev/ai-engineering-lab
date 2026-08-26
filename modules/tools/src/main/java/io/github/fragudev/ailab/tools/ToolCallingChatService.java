@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -52,6 +54,11 @@ import tools.jackson.databind.ObjectMapper;
 public class ToolCallingChatService {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+
+    /** Matches the opening of this project's own tool-call envelope, tolerating the whitespace a
+     * model may insert. Deliberately specific: it anchors on the {@code "tool_call"} key rather than
+     * on any JSON object, so ordinary JSON in an answer is left alone. */
+    private static final Pattern ENVELOPE_START = Pattern.compile("\\{\\s*\"tool_call\"\\s*:");
 
     private final ToolInvoker toolInvoker;
     private final PendingConfirmationRegistry confirmationRegistry;
@@ -93,7 +100,11 @@ public class ToolCallingChatService {
             Optional<ParsedToolCall> parsed =
                     toolsAvailableThisRound ? tryParseToolCall(response.content()) : Optional.empty();
             if (parsed.isEmpty()) {
-                return Flux.just(ToolChatChunk.last(combine(state.responses, response.content()), state.invocations));
+                // Strip before delivering (issue #62): with the tool budget spent this branch is
+                // also the path an unparsed envelope takes, and raw protocol JSON must never be the
+                // user's answer.
+                return Flux.just(ToolChatChunk.last(
+                        combine(state.responses, stripToolCallEnvelopes(response.content())), state.invocations));
             }
             return handleToolCall(parsed.get(), allTools, state)
                     .concatWith(Flux.defer(() -> runRound(provider, allTools, state)));
@@ -228,9 +239,75 @@ public class ToolCallingChatService {
         };
     }
 
+    /**
+     * Locates a tool-call envelope anywhere in {@code content}, not only at its start.
+     *
+     * <p>The system prompt tells the model its entire response must be the envelope and "nothing
+     * before or after it". Models do not reliably comply. Measured over a full 84-case live run
+     * (post-roadmap review issue #62): 10 answers contained a raw envelope, and 4 of those had prose
+     * in front of it — {@code readTree} on the whole string threw, no call was parsed, and the model's
+     * search request was **silently never executed** while the raw JSON went to the user as the
+     * answer. That is a functional failure, not a display bug.
+     *
+     * <p>Returns the envelope's exact substring so the caller can both parse it and remove it. The
+     * scan is a brace-balanced walk that respects JSON string literals and escapes, so an argument
+     * value containing {@code {} or "} cannot end the envelope early.
+     */
+    private static Optional<String> findEnvelope(String content) {
+        Matcher matcher = ENVELOPE_START.matcher(content);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+        int start = matcher.start();
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int i = start; i < content.length(); i++) {
+            char c = content.charAt(i);
+            if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                inString = !inString;
+            } else if (!inString && c == '{') {
+                depth++;
+            } else if (!inString && c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return Optional.of(content.substring(start, i + 1));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Removes every tool-call envelope from text destined for the user (post-roadmap review issue
+     * #62). Needed because the loop stops parsing envelopes once {@code ai.tools.max-calls-per-turn}
+     * is spent, while the model — primed by its own prior envelope-shaped turns in the history —
+     * keeps emitting them; the raw protocol JSON then went out verbatim as the answer. 6 of the 10
+     * leaks in that live run took this path.
+     *
+     * <p>Structural, matching only this project's own envelope shape — never a heuristic on prose,
+     * so it cannot truncate a legitimate answer that merely discusses its sources.
+     */
+    static String stripToolCallEnvelopes(String content) {
+        String remaining = content;
+        Optional<String> envelope;
+        while ((envelope = findEnvelope(remaining)).isPresent()) {
+            remaining = remaining.replace(envelope.get(), "");
+        }
+        return remaining.strip();
+    }
+
     private static Optional<ParsedToolCall> tryParseToolCall(String content) {
+        Optional<String> envelope = findEnvelope(content);
+        if (envelope.isEmpty()) {
+            return Optional.empty();
+        }
         try {
-            JsonNode root = JSON.readTree(content);
+            JsonNode root = JSON.readTree(envelope.get());
             JsonNode call = root.path("tool_call");
             if (!call.isObject()) {
                 return Optional.empty();
