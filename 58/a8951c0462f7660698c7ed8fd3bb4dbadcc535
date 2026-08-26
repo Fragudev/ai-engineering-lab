@@ -1,0 +1,21 @@
+modules/ai-provider/src/main/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioProviderConfiguration.java
+  s_f6c2719e97e037::t_d58f774477a2f6 27-28,36,41-77
+modules/ai-provider/src/test/java/io/github/fragudev/ailab/aiprovider/internal/LmStudioProviderConfigurationTest.java
+  s_f6c2719e97e037::t_210598e475b629 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "58a8951c0462f7660698c7ed8fd3bb4dbadcc535",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
