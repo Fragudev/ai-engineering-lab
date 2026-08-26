@@ -284,30 +284,36 @@ retrieval number without the model and machine behind it is not reproducible.
 retrieval-threshold miscalibration this same live run surfaced
 ([`docs/ai-evaluation.md` §8](docs/ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8-recalibrated-post-roadmap-issue-29)).
 
-**Real profile comparison against a live model**
-([`eval/reports/2026-08-25-dense-only-hybrid-hybrid-rerank.md`](eval/reports/2026-08-25-dense-only-hybrid-hybrid-rerank.md),
-`qwen/qwen3.8-27b` + `bge-m3` on an Apple M4 Pro, 48 GB):
+**Real profile comparison against a live model** — every case, no gaps
+([`eval/reports/2026-08-26-dense-only-hybrid-hybrid-rerank.md`](eval/reports/2026-08-26-dense-only-hybrid-hybrid-rerank.md),
+`qwen/qwen3.8-27b` + `bge-m3` on an Apple M4 Pro, 48 GB, **84 of 84 cases**, 2h21m):
 
 | Profile | Recall@k | MRR | Cite prec. | Cite recall | p50 |
 |---|---|---|---|---|---|
-| dense-only | 0.93 | 0.47 | 0.64 | 0.86 | 40.6s |
-| hybrid | 0.93 | **0.57** | 0.67 | 0.86 | 47.1s |
-| hybrid-rerank | 0.93 | 0.51 | 0.65 | 0.86 | 42.9s |
+| dense-only | **0.81** | 0.46 | 0.52 | 0.69 | 57.9s |
+| hybrid | **0.85** | **0.52** | 0.48 | 0.69 | 71.6s |
+| hybrid-rerank | 0.71 | 0.43 | 0.48 | 0.65 | 59.1s |
 
-Adding the lexical retriever changed *ranking*, not *what was found*: recall is identical across all
-three, MRR is not. That is the kind of answer the harness exists to produce.
+`hybrid` leads on both recall and MRR. **`hybrid-rerank` is the worst of the three** — below plain
+`dense-only` on recall, meaning MMR reranking is discarding relevant chunks on this corpus rather
+than reordering them. That is a real, uncomfortable result about the project's own default, and
+exactly the kind of answer the harness exists to produce.
 
-**Read with its caveats, which the report states in full:** 46 of 84 case-runs completed — LM Studio
-degraded under sustained sequential load and 38 calls failed (it answered a trivial prompt in 1.3s
-immediately afterwards, so this is load-related, not a crash). A single repetition means `± 0.00` is
-one sample, not determinism. The p95 figures for `hybrid`/`hybrid-rerank` measure that degradation,
-not the pipeline. **And that report's `abstentionAccuracy` column reads 0.00 while the model in fact
-declined correctly on every unanswerable case — a defect in the metric, not the system
-([#61](https://github.com/Fragudev/ai-engineering-lab/issues/61), since fixed: declining is now
-reported as two columns, because the deterministic gate and the model declining in prose are
-different mechanisms measured by different instruments — see
-[`docs/ai-evaluation.md` §3](docs/ai-evaluation.md#3-metrics)). The committed report predates that
-fix and is left as it was run.**
+**These numbers are lower than the ones published a day earlier, and that is the point.** The
+previous run completed only 46 of 84 cases and reported recall 0.93 across all three profiles. The
+missing 38 were not random: an inert timeout setting
+([#65](https://github.com/Fragudev/ai-engineering-lab/issues/65)) capped every model call at ~60s, so
+the cases that got dropped were precisely the slowest — and slowest correlates with hardest. Those
+figures were survivorship-biased, and the tie at 0.93 hid `hybrid-rerank`'s real weakness entirely.
+Half of `dense-only`'s cases turn out to need more than 60 seconds; before the fix not one of them
+could finish. The earlier report is kept, marked superseded, with its wrong diagnosis named.
+
+**Remaining caveats, stated in the report itself:** a single repetition means `± 0.00` is one sample,
+not determinism. Refusal correctness reads `n/a` because the judge was not run — *not measured*, not
+zero ([#61](https://github.com/Fragudev/ai-engineering-lab/issues/61) split declining into two
+columns, since the deterministic gate and the model declining in prose are different mechanisms
+measured by different instruments; see
+[`docs/ai-evaluation.md` §3](docs/ai-evaluation.md#3-metrics)).
 
 Before the abstention threshold was recalibrated ([#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)),
 every one of these numbers was `0`: the pipeline abstained on everything.
