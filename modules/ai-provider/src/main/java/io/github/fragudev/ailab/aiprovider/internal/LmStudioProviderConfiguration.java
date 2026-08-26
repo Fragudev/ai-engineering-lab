@@ -24,20 +24,8 @@ class LmStudioProviderConfiguration {
     @Bean
     @Profile("lmstudio")
     ChatProvider lmStudioChatProvider(LmStudioProperties properties, ObservationRegistry observationRegistry) {
-        OpenAiChatModel chatModel = OpenAiChatModel.builder()
-                .options(OpenAiChatOptions.builder()
-                        .baseUrl(properties.baseUrl())
-                        .apiKey(apiKeyPlaceholder())
-                        .model(properties.chatModel())
-                        .build())
-                // Without this, ai.provider.lmstudio.timeout only bounded LmStudioChatProvider's own
-                // outer Mono.timeout() — the underlying OkHttp client kept its own, much shorter
-                // default read timeout, so a real 27B model's inter-token gaps (Phase 8's own
-                // measured p50 was 26s, well past OkHttp's default) killed the stream with
-                // ProviderUnavailableException before the configured timeout ever had a chance to
-                // fire. Found for real running the live evaluation for issue #29, not a guess.
-                .httpClientBuilderCustomizer(builder -> builder.timeout(properties.timeout()))
-                .build();
+        OpenAiChatModel chatModel =
+                OpenAiChatModel.builder().options(chatOptions(properties)).build();
         return new LmStudioChatProvider(chatModel, properties.chatModel(), properties.timeout(), observationRegistry);
     }
 
@@ -45,13 +33,46 @@ class LmStudioProviderConfiguration {
     @Profile("lmstudio")
     EmbeddingProvider lmStudioEmbeddingProvider(LmStudioProperties properties) {
         OpenAiEmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
-                .options(OpenAiEmbeddingOptions.builder()
-                        .baseUrl(properties.baseUrl())
-                        .apiKey(apiKeyPlaceholder())
-                        .model(properties.embeddingModel())
-                        .build())
+                .options(embeddingOptions(properties))
                 .build();
         return new LmStudioEmbeddingProvider(embeddingModel, properties.embeddingModel());
+    }
+
+    /**
+     * Package-private purely as a test seam, so {@code LmStudioProviderConfigurationTest} can assert
+     * the configured timeout actually reaches the options object rather than re-deriving it — the
+     * same visibility-relaxation reasoning ADR-0013 recorded for {@code RagPipeline.shouldAbstain}.
+     *
+     * <p><b>{@code .timeout(...)} is the line that makes {@code ai.provider.lmstudio.timeout} mean
+     * anything</b> (post-roadmap review issue #65). Spring AI threads this options value through
+     * {@code OpenAiSetup} into the HTTP client it builds for the model; leave it unset and
+     * {@code AbstractOpenAiOptions.DEFAULT_TIMEOUT} — a hard 60 seconds — silently governs every
+     * call instead. Measured, not assumed: with the property set to 15s, 300s and 600s in turn,
+     * every request still died at 60.5s until this line existed.
+     *
+     * <p>An earlier attempt at this (issue #29) used
+     * {@code httpClientBuilderCustomizer(b -> b.timeout(...))} and was recorded as fixed because a
+     * live run "lasted longer". It did not work, and that was never evidence that it had.
+     */
+    static OpenAiChatOptions chatOptions(LmStudioProperties properties) {
+        return OpenAiChatOptions.builder()
+                .baseUrl(properties.baseUrl())
+                .apiKey(apiKeyPlaceholder())
+                .model(properties.chatModel())
+                .timeout(properties.timeout())
+                .build();
+    }
+
+    /** Embeddings inherit the same 60s default from the shared {@code AbstractOpenAiOptions} base, so
+     * they need the same line. It has never bitten in practice — these are single-shot and fast — but
+     * batch-embedding a large document is exactly the call that would eventually cross 60s. */
+    static OpenAiEmbeddingOptions embeddingOptions(LmStudioProperties properties) {
+        return OpenAiEmbeddingOptions.builder()
+                .baseUrl(properties.baseUrl())
+                .apiKey(apiKeyPlaceholder())
+                .model(properties.embeddingModel())
+                .timeout(properties.timeout())
+                .build();
     }
 
     /** LM Studio doesn't check the key, but the openai-java SDK rejects a blank one at build time. */
