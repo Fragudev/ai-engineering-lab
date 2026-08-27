@@ -157,7 +157,7 @@ Detailed views, sequence diagrams and the reasoning behind each boundary are in
 | Model server | LM Studio (OpenAI-compatible API), swappable for OpenAI/Anthropic |
 | Embeddings | `bge-m3`, 1024 dimensions — fixed project-wide |
 | Observability | OpenTelemetry → Collector → Prometheus, Tempo, Loki, Grafana |
-| Testing | JUnit 5, Testcontainers, ArchUnit, WireMock, Toxiproxy |
+| Testing | JUnit 5, AssertJ, Testcontainers, ArchUnit, Spring Modulith test, JaCoCo |
 
 Spring AI is an implementation detail behind `ChatProvider` and `EmbeddingProvider`. Swapping model
 providers is a configuration change, not a refactor — see
