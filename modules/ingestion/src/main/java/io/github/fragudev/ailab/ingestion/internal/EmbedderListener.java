@@ -21,6 +21,7 @@ class EmbedderListener {
     private static final String CONSUMER_GROUP = "ingestion-embedder";
 
     private final IdempotencyGuard idempotencyGuard;
+    private final AttemptRecording attemptRecording;
     private final IngestionJobRepository jobRepository;
     private final DocumentRepository documentRepository;
     private final ChunkService chunkService;
@@ -35,8 +36,10 @@ class EmbedderListener {
             ChunkService chunkService,
             EmbeddingProvider embeddingProvider,
             ApplicationEventPublisher eventPublisher,
-            Tracer tracer) {
+            Tracer tracer,
+            AttemptRecording attemptRecording) {
         this.idempotencyGuard = idempotencyGuard;
+        this.attemptRecording = attemptRecording;
         this.jobRepository = jobRepository;
         this.documentRepository = documentRepository;
         this.chunkService = chunkService;
@@ -54,6 +57,10 @@ class EmbedderListener {
         if (!idempotencyGuard.isNewEvent(CONSUMER_GROUP, event.eventId())) {
             return;
         }
+
+        // Committed independently of this listener's transaction (issue: attempts always 0), so a
+        // failure that rolls this listener back still leaves a truthful retry count behind.
+        attemptRecording.recordAttempt(event.documentId());
 
         List<String> texts = event.chunks().stream().map(ChunkDraft::content).toList();
         List<Embedding> embeddings = embeddingProvider.embed(texts);

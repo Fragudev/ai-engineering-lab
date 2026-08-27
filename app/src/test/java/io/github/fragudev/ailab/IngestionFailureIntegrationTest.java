@@ -86,17 +86,26 @@ class IngestionFailureIntegrationTest {
         assertThat(job.get("stage").asText()).isEqualTo("FAILED");
         assertThat(job.get("lastError").asText()).contains("Simulated embedding failure");
         // docs/architecture.md §11's own claim ("a document whose embedding stage fails three
-        // times") — checked directly by counting real calls to the failing provider rather than
-        // via IngestionJob.attempts(), which is never incremented on this path (recordAttempt()
-        // exists but nothing calls it — Kafka's own DefaultErrorHandler redelivers the record
-        // in-process, it doesn't route through that field). The exact count is not a stable number
-        // to assert here, though: running this test repeatedly measured both 4 and 5, one call more
-        // than KafkaConfiguration's ExponentialBackOffWithMaxRetries(3) config alone would predict
-        // (1 initial + 3 retries = 4) — most likely a consumer-group rebalance replaying a message
-        // under this test's container-startup timing, a real but separate concern from what this
-        // issue asks for. What's stable and worth asserting is that retries genuinely happened, not
-        // a single bare attempt.
+        // times"), checked by counting real calls to the failing provider. The exact count is not a
+        // stable number to assert: running this test repeatedly measured both 4 and 5, one more than
+        // KafkaConfiguration's ExponentialBackOffWithMaxRetries(3) alone would predict (1 initial +
+        // 3 retries) — most likely a consumer-group rebalance replaying a message under this test's
+        // container-startup timing. What is stable is that retries genuinely happened.
         assertThat(embedCallCount.get()).isGreaterThanOrEqualTo(2);
+
+        // The job's own attempts counter must now agree with reality. It read 0 for the whole
+        // project's life — IngestionJob.recordAttempt() existed but nothing called it — while
+        // docs/operations.md's runbook tells an operator to select j.attempts on a failed job, and
+        // the job-status API declares the field required. AttemptRecording commits it in its own
+        // REQUIRES_NEW transaction precisely so the listener's rollback cannot erase it.
+        // Bounded rather than pinned to embedCallCount exactly: the counter is incremented once per
+        // listener invocation, just before the embed call, so it can never exceed the number of embed
+        // calls but could trail it by one if an invocation failed between the two. The load-bearing
+        // claim is that it is no longer 0.
+        assertThat(job.get("attempts").asInt())
+                .as("attempts must reflect real retries, not the 0 it always used to report")
+                .isGreaterThanOrEqualTo(2)
+                .isLessThanOrEqualTo(embedCallCount.get());
 
         JsonNode dltEvent = consumeOneRecordFrom("ingestion.chunks.created.v1.dlt");
         assertThat(dltEvent.get("documentId").asText())

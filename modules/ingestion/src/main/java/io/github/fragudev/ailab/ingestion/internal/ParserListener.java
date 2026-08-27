@@ -25,6 +25,7 @@ class ParserListener {
     private static final Set<String> SUPPORTED_MIME_TYPES = Set.of("text/plain", "text/markdown");
 
     private final IdempotencyGuard idempotencyGuard;
+    private final AttemptRecording attemptRecording;
     private final IngestionJobRepository jobRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Tracer tracer;
@@ -33,8 +34,10 @@ class ParserListener {
             IdempotencyGuard idempotencyGuard,
             IngestionJobRepository jobRepository,
             ApplicationEventPublisher eventPublisher,
-            Tracer tracer) {
+            Tracer tracer,
+            AttemptRecording attemptRecording) {
         this.idempotencyGuard = idempotencyGuard;
+        this.attemptRecording = attemptRecording;
         this.jobRepository = jobRepository;
         this.eventPublisher = eventPublisher;
         this.tracer = tracer;
@@ -49,6 +52,10 @@ class ParserListener {
         if (!idempotencyGuard.isNewEvent(CONSUMER_GROUP, event.eventId())) {
             return;
         }
+
+        // Committed independently of this listener's transaction (issue: attempts always 0), so a
+        // failure that rolls this listener back still leaves a truthful retry count behind.
+        attemptRecording.recordAttempt(event.documentId());
 
         if (!SUPPORTED_MIME_TYPES.contains(event.mimeType())) {
             throw new NonRetryableIngestionException("Unsupported MIME type: " + event.mimeType());
