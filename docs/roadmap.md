@@ -62,6 +62,13 @@ yet: enforcing them now would add build fragility with nothing real to check, si
 still an empty package-info skeleton. They'll be added when Phase 1 introduces real logic to enforce
 against, to avoid the scope-creep AGENTS.md rule 6 warns against.
 
+> **They never were.** Phases 1–8 all shipped without them, and nobody revisited this note — while
+> `AGENTS.md` went on stating nullability was "enforced by NullAway" and `architecture.md` §11 listed
+> both as real tooling. A deferral that is never revisited quietly becomes a false claim elsewhere.
+> Corrected in the post-roadmap review (issues #35 and its follow-up): both documents now say the
+> annotations are unenforced. Adding the tooling remains a legitimate future change — this note is
+> about the claim, not the decision.
+
 ---
 
 ## Phase 1 — Chat vertical slice

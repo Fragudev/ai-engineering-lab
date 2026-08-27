@@ -84,8 +84,12 @@ way.
 at the API edge. Never return a bare 500 with a stack trace. Never swallow an exception without
 either handling it or logging it with context.
 
-**Nullability** — JSpecify annotations, enforced by NullAway. Prefer `Optional` in return types over
-nullable returns.
+**Nullability** — JSpecify annotations. Prefer `Optional` in return types over nullable returns.
+**Nothing enforces this**: there is no NullAway, no Error Prone, no static-analysis gate of any kind —
+only Spotless, which formats. The annotations document intent for readers and IDEs; keeping them
+honest is a review responsibility, not a build one. Said plainly because this line previously claimed
+NullAway enforced it, and it has never been a dependency (post-roadmap review issue #35's finding,
+one file over).
 
 **Logging** — structured, with `traceId` and `correlationId`. **Never log prompt or completion
 content by default**; that path goes through the redaction helper in `platform`.
