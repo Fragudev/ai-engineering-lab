@@ -1,0 +1,27 @@
+modules/ingestion/src/main/java/io/github/fragudev/ailab/ingestion/internal/AttemptRecording.java
+  s_f6c2719e97e037::t_2b7a0b6fe4c645 1-41
+modules/ingestion/src/main/java/io/github/fragudev/ailab/ingestion/internal/ChunkerListener.java
+  s_f6c2719e97e037::t_3dc6bc3b5eaee3 19,28-29,31,47-50
+modules/ingestion/src/main/java/io/github/fragudev/ailab/ingestion/internal/EmbedderListener.java
+  s_f6c2719e97e037::t_9bb603a23745f0 24,39-40,42,61-64
+modules/ingestion/src/main/java/io/github/fragudev/ailab/ingestion/internal/ParserListener.java
+  s_f6c2719e97e037::t_9c8117f4d7c7c5 28,37-38,40,56-59
+app/src/test/java/io/github/fragudev/ailab/IngestionFailureIntegrationTest.java
+  s_f6c2719e97e037::t_9315290d080111 89-93,96-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d42486b80c56b3c5f352267030e0165b618c62c4",
+  "prompts": {},
+  "sessions": {
+    "s_f6c2719e97e037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d71cd04a-2491-4b09-8bc2-0e5b3c8eed55",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
