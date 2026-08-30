@@ -33,7 +33,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <spring-ai.version>2.0.0</spring-ai.version>
+    <spring-ai.version>2.0.1</spring-ai.version>
     <spring-modulith.version>2.1.0</spring-modulith.version>
     <archunit.version>1.5.0</archunit.version>
     <jspecify.version>1.0.1</jspecify.version>
