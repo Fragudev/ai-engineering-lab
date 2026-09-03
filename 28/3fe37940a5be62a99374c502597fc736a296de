@@ -1,0 +1,39 @@
+app/src/main/java/io/github/fragudev/ailab/KnowledgeBaseSearchTool.java
+  s_c2cdc90bf95a97::t_0b78a607c1312c 34-37,78-79
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/HybridSearchService.java
+  s_c2cdc90bf95a97::t_c9469ed11cdf10 89
+app/src/main/java/io/github/fragudev/ailab/RagProfileResponse.java
+  s_c2cdc90bf95a97::t_3be024f9bcc31a 12,23
+app/src/main/resources/openapi/openapi.yaml
+  s_c2cdc90bf95a97::t_be873896f4f033 547-556,569-575
+docs/adr/0007-hybrid-retrieval-and-fusion.md
+  s_c2cdc90bf95a97::t_eb8d993ede0c0f 3,72-74,91-148
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/HybridSearchOptions.java
+  s_c2cdc90bf95a97::t_27753066f4f192 10-11,14-18
+modules/knowledge/src/main/java/io/github/fragudev/ailab/knowledge/internal/MmrReranker.java
+  s_c2cdc90bf95a97::t_bce0f2dddb52c6 17-21,26-36,51
+modules/knowledge/src/test/java/io/github/fragudev/ailab/knowledge/internal/MmrRerankerTest.java
+  s_c2cdc90bf95a97::t_a3f3b4e5b1f96e 43-72
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagPipeline.java
+  s_c2cdc90bf95a97::t_622639478f419a 171-175
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagProfile.java
+  s_c2cdc90bf95a97::t_1496674ff7165d 16-22,38
+modules/rag/src/main/java/io/github/fragudev/ailab/rag/RagProfiles.java
+  s_c2cdc90bf95a97::t_28e73c1eddd01c 11-16,26,28-29,32,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "283fe37940a5be62a99374c502597fc736a296de",
+  "prompts": {},
+  "sessions": {
+    "s_c2cdc90bf95a97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fbe763-193a-4d1e-ab8f-1c1d46a8cc35",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
