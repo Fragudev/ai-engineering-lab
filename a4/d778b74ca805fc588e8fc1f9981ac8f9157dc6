@@ -1,0 +1,35 @@
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/internal/ReportWriter.java
+  s_c2cdc90bf95a97::t_ff91b86e9fd444 4,84-90,124-125,127-130,135-136,178-238
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/internal/ReportWriterTest.java
+  s_c2cdc90bf95a97::t_108d16dcef8aca 7,93-133,140-150,178
+app/src/test/java/io/github/fragudev/ailab/EvaluationFlowIntegrationTest.java
+  s_c2cdc90bf95a97::t_d318051667ae1d 171-174
+docs/ai-evaluation.md
+  s_c2cdc90bf95a97::t_906392016c3e78 172-179
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/CaseCoverage.java
+  s_c2cdc90bf95a97::t_3cf6c1c19e32b9 1-38
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/EvalRunner.java
+  s_c2cdc90bf95a97::t_f2094f9637e5a5 136,188-189,241-247,259
+modules/evaluation/src/main/java/io/github/fragudev/ailab/evaluation/ProfileSummary.java
+  s_c2cdc90bf95a97::t_8437006bb6c79b 25-27,40
+modules/evaluation/src/test/java/io/github/fragudev/ailab/evaluation/CaseCoverageTest.java
+  s_c2cdc90bf95a97::t_474f25b663b7fc 1-46
+scripts/check-eval-regression.sh
+  s_c2cdc90bf95a97::t_51075a722354d9 79-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a4d778b74ca805fc588e8fc1f9981ac8f9157dc6",
+  "prompts": {},
+  "sessions": {
+    "s_c2cdc90bf95a97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fbe763-193a-4d1e-ab8f-1c1d46a8cc35",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
