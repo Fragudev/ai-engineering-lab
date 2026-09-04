@@ -41,6 +41,36 @@ class MmrRerankerTest {
     }
 
     @Test
+    void lambdaOfOneDisablesTheDiversityPenaltySoSelectionIsPureRelevanceOrder() {
+        float[] query = {1f, 0f};
+        SearchResult a = resultOf(new float[] {4f, 3f}); // cos(q,A) = 0.8 -- picked first
+        SearchResult nearDuplicateOfA = resultOf(new float[] {4f, 3.5f}); // cos(q,B) ~= 0.753, cos(A,B) ~= 0.997
+        SearchResult diverseCandidate = resultOf(new float[] {3f, -4f}); // cos(q,C) = 0.6
+
+        // lambda=0.7 would prefer the diverse candidate second (see the test above); lambda=1.0
+        // ignores redundancy entirely and just takes the next most relevant, the near-duplicate.
+        List<SearchResult> selected =
+                reranker.rerank(query, "ignored", List.of(a, nearDuplicateOfA, diverseCandidate), 2, 1.0);
+
+        assertThat(selected).extracting(SearchResult::chunk).containsExactly(a.chunk(), nearDuplicateOfA.chunk());
+    }
+
+    @Test
+    void theFourArgOverloadUsesTheDefaultLambda() {
+        float[] query = {1f, 0f};
+        SearchResult a = resultOf(new float[] {4f, 3f});
+        SearchResult nearDuplicateOfA = resultOf(new float[] {4f, 3.5f});
+        SearchResult diverseCandidate = resultOf(new float[] {3f, -4f});
+        List<SearchResult> candidates = List.of(a, nearDuplicateOfA, diverseCandidate);
+
+        assertThat(reranker.rerank(query, "ignored", candidates, 2))
+                .extracting(SearchResult::chunk)
+                .isEqualTo(reranker.rerank(query, "ignored", candidates, 2, MmrReranker.DEFAULT_LAMBDA).stream()
+                        .map(SearchResult::chunk)
+                        .toList());
+    }
+
+    @Test
     void stampsSequentialOneBasedFinalRankOnTheSelection() {
         float[] query = {1f, 0f};
         SearchResult a = resultOf(new float[] {4f, 3f});
