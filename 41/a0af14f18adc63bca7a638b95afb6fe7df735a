@@ -1,0 +1,14 @@
+pom.xml
+  h_7d99c7b8818613 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "41a0af14f18adc63bca7a638b95afb6fe7df735a",
+  "prompts": {},
+  "humans": {
+    "h_7d99c7b8818613": {
+      "author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
