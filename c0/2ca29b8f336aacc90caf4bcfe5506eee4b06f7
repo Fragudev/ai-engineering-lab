@@ -1,0 +1,19 @@
+.github/workflows/codeql.yml
+  s_c2cdc90bf95a97::t_72dc1eb6eaa29f 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c02ca29b8f336aacc90caf4bcfe5506eee4b06f7",
+  "prompts": {},
+  "sessions": {
+    "s_c2cdc90bf95a97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fbe763-193a-4d1e-ab8f-1c1d46a8cc35",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
