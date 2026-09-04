@@ -13,6 +13,13 @@ import io.github.fragudev.ailab.knowledge.RerankStrategy;
  *     fusion
  * @param lexicalEnabled whether the lexical (full-text) retriever runs at all
  * @param rerankStrategy which {@link RerankStrategy} to apply after fusion
+ * @param mmrLambda relevance-vs-diversity weight for {@link RerankStrategy#MMR} — MMR picks each next
+ *     chunk maximizing {@code λ·relevance − (1−λ)·max_similarity(already_selected)}, so higher λ
+ *     favours pure relevance and lower λ favours diversity. Ignored unless {@code rerankStrategy} is
+ *     {@code MMR}. Was a hardcoded {@code 0.7} in {@code MmrReranker} until issue #67 measured MMR
+ *     losing recall on this narrow corpus and needed it tunable per profile to investigate; the
+ *     value here is still "a starting heuristic, not tuned against a golden dataset" (AGENTS.md
+ *     rule 2) until that measurement is done.
  * @param contextTokenBudget rough character/token budget for the assembled context (see
  *     {@code internal.ContextBuilder})
  * @param maxVectorDistance abstention gate: if the best vector-retriever match (across all returned
@@ -28,5 +35,6 @@ public record RagProfile(
         int candidatesPerRetriever,
         boolean lexicalEnabled,
         RerankStrategy rerankStrategy,
+        double mmrLambda,
         int contextTokenBudget,
         double maxVectorDistance) {}

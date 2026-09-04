@@ -9,6 +9,7 @@ record RagProfileResponse(
         int candidatesPerRetriever,
         boolean lexicalEnabled,
         RerankStrategy rerankStrategy,
+        double mmrLambda,
         int contextTokenBudget,
         double maxVectorDistance) {
 
@@ -19,6 +20,7 @@ record RagProfileResponse(
                 profile.candidatesPerRetriever(),
                 profile.lexicalEnabled(),
                 profile.rerankStrategy(),
+                profile.mmrLambda(),
                 profile.contextTokenBudget(),
                 profile.maxVectorDistance());
     }
