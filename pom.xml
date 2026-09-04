@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.1</version>
     <relativePath/>
   </parent>
 
@@ -46,11 +46,11 @@
     <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
     <postgresql.version>42.7.13</postgresql.version>
 
-    <!-- Overrides spring-boot-starter-parent 4.1.0's managed 11.0.22. Found by this repo's own
-         Trivy image scan (.github/workflows/ci.yml): three CRITICAL Tomcat CVEs, all fixed in
-         11.0.25 — CVE-2026-65182 (security-constraint bypass), CVE-2026-65905 (DIGEST auth replay),
-         CVE-2026-68525 (FORM auth bypass). An embedded-server dependency this project ships, so it
-         is within our control to fix, exactly like the postgresql override above
+    <!-- Overrides the version spring-boot-starter-parent manages (4.1.1 still ships 11.0.24). Found
+         by this repo's own Trivy image scan (.github/workflows/ci.yml): three CRITICAL Tomcat CVEs,
+         all fixed in 11.0.25 — CVE-2026-65182 (security-constraint bypass), CVE-2026-65905 (DIGEST
+         auth replay), CVE-2026-68525 (FORM auth bypass). An embedded-server dependency this project
+         ships, so it is within our control to fix, exactly like the postgresql override above
          (docs/threat-model.md Supply chain). Spring Boot's own `tomcat.version` property is the
          supported override point; drop this once the managed version reaches 11.0.25+. -->
     <tomcat.version>11.0.25</tomcat.version>
