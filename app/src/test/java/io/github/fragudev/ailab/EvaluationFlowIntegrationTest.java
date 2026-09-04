@@ -168,6 +168,10 @@ class EvaluationFlowIntegrationTest {
         ProfileSummary summary = report.profiles().get(0);
         assertThat(summary.ragProfile()).isEqualTo("dense-only");
         assertThat(summary.recallAtK().mean()).isEqualTo(1.0);
+        // Both dataset cases ran to completion under the recorded profile — nothing skipped, so the
+        // numbers above cover the whole dataset (the guard added for issues #65/#67).
+        assertThat(summary.coverage().complete()).isTrue();
+        assertThat(summary.coverage().completed()).isEqualTo(2);
         // Under the `recorded` profile the deterministic gate genuinely does fire for the
         // unanswerable case: RecordedEmbeddingProvider is hash-seeded per exact string, so a question
         // matching no seeded chunk lands far past maxVectorDistance. This is the gate half of

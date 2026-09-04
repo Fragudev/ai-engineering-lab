@@ -14,13 +14,26 @@ import org.springframework.stereotype.Component;
 @Component
 public class MmrReranker implements Reranker {
 
-    /** Relevance-vs-diversity weight — a starting heuristic, not tuned against a golden dataset
-     * (AGENTS.md rule 2); Phase 4 is where that tuning happens. */
-    private static final double LAMBDA = 0.7;
+    /** Relevance-vs-diversity weight used when a caller doesn't supply one — a starting heuristic,
+     * not tuned against a golden dataset (AGENTS.md rule 2). The tunable value now lives on
+     * {@code RagProfile.mmrLambda} (issue #67); this constant only backs the {@link Reranker}
+     * interface's 4-arg method for callers that don't care to choose. */
+    static final double DEFAULT_LAMBDA = 0.7;
 
     @Override
     public List<SearchResult> rerank(
             float[] queryEmbedding, String queryText, List<SearchResult> candidates, int topK) {
+        return rerank(queryEmbedding, queryText, candidates, topK, DEFAULT_LAMBDA);
+    }
+
+    /**
+     * As {@link #rerank(float[], String, List, int)}, with an explicit relevance-vs-diversity weight
+     * {@code lambda} in {@code [0, 1]}: the next chunk maximizes
+     * {@code lambda·relevance − (1−lambda)·max_similarity(already_selected)}. {@code lambda = 1} is
+     * pure relevance (no diversity penalty); {@code lambda = 0} ignores relevance entirely.
+     */
+    public List<SearchResult> rerank(
+            float[] queryEmbedding, String queryText, List<SearchResult> candidates, int topK, double lambda) {
         List<SearchResult> remaining = new ArrayList<>(candidates);
         List<SearchResult> selected = new ArrayList<>();
 
@@ -35,7 +48,7 @@ public class MmrReranker implements Reranker {
                                 candidate.chunk().embedding(), s.chunk().embedding()))
                         .max()
                         .orElse(0.0);
-                double mmrScore = LAMBDA * relevance - (1 - LAMBDA) * maxSimilarityToSelected;
+                double mmrScore = lambda * relevance - (1 - lambda) * maxSimilarityToSelected;
                 if (mmrScore > bestScore) {
                     bestScore = mmrScore;
                     best = candidate;
