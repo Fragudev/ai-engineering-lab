@@ -169,6 +169,14 @@ Local models are not fully deterministic even at temperature zero, so determinis
 reported as a mean over three runs with the spread shown. A recall figure with no variance stated is
 an incomplete measurement.
 
+Every profile's row also carries **case coverage** — `completed / attempted` case runs. When a case
+throws (a hung or failing live-model call), `EvalRunner` logs it and moves on so one bad case
+doesn't discard the whole run; the cost is that the profile's metrics become a mean over a
+subsample. The report leads with a warning whenever any profile fell short, `check-eval-regression.sh`
+skips the regression comparison for an incomplete profile rather than compare a subsample to a
+full-run baseline, and the machine-readable sidecar carries `profiles[].coverage`. A "84 of 84"
+claim is now emitted by the harness, not written by hand into the report prose (issues #65, #67).
+
 ---
 
 ## 6. Continuous evaluation

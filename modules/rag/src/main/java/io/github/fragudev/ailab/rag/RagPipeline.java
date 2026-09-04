@@ -168,7 +168,11 @@ public class RagPipeline {
 
     private static HybridSearchOptions toSearchOptions(RagProfile profile) {
         return new HybridSearchOptions(
-                profile.topK(), profile.candidatesPerRetriever(), profile.lexicalEnabled(), profile.rerankStrategy());
+                profile.topK(),
+                profile.candidatesPerRetriever(),
+                profile.lexicalEnabled(),
+                profile.rerankStrategy(),
+                profile.mmrLambda());
     }
 
     /** No candidates at all, or the closest vector match found is farther than the profile's

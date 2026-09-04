@@ -76,6 +76,19 @@ while IFS= read -r profile; do
     continue
   fi
 
+  # Coverage gate: a report that skipped cases (a hung/failing model call — EvalRunner logs and
+  # continues) has metrics that are a mean over a subsample, so comparing them to a full-run
+  # baseline is not a valid regression check in either direction. Warn loudly and skip this
+  # profile rather than emit a falsely reassuring "ok, delta ...". This is the #65/#67 failure
+  # mode; the ReportWriter Markdown carries the same warning for a human reader.
+  cov_completed="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .coverage.completed // empty' "${REPORT}")"
+  cov_attempted="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .coverage.attempted // empty' "${REPORT}")"
+  if [ -n "${cov_attempted}" ] && [ "${cov_completed}" != "${cov_attempted}" ]; then
+    echo "check-eval-regression: WARNING [${profile}] incomplete coverage ${cov_completed}/${cov_attempted} —" \
+         "metrics are a subsample; skipping regression comparison for this profile." >&2
+    continue
+  fi
+
   new_recall="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .recallAtK.mean' "${REPORT}")"
   new_precision="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .citationPrecision.mean' "${REPORT}")"
   new_abstention="$(jq -r --arg p "${profile}" '.profiles[] | select(.ragProfile == $p) | .gateAbstentionRate.mean' "${REPORT}")"
