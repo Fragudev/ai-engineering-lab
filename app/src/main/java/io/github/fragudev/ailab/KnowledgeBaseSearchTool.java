@@ -31,6 +31,10 @@ class KnowledgeBaseSearchTool implements Tool {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final int TOP_K = 5;
 
+    /** Inert here — this tool's fixed config never reranks ({@code RerankStrategy.NONE}), so the MMR
+     * weight is never read. Present only because {@code HybridSearchOptions} requires the field. */
+    private static final double MMR_LAMBDA_UNUSED = 0.7;
+
     private static final ToolDefinition DEFINITION = new ToolDefinition(
             "knowledge-base-search",
             "1",
@@ -71,8 +75,8 @@ class KnowledgeBaseSearchTool implements Tool {
             return ToolResult.failure("'query' must not be blank");
         }
 
-        List<SearchResult> results =
-                hybridSearchService.search(query, new HybridSearchOptions(TOP_K, 20, true, RerankStrategy.NONE));
+        List<SearchResult> results = hybridSearchService.search(
+                query, new HybridSearchOptions(TOP_K, 20, true, RerankStrategy.NONE, MMR_LAMBDA_UNUSED));
 
         ArrayNode resultsNode = JSON.createArrayNode();
         for (SearchResult result : results) {

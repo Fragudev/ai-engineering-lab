@@ -1,6 +1,6 @@
 # ADR-0007: Hybrid retrieval, Reciprocal Rank Fusion, and reranking without a cross-encoder model
 
-- **Status:** Accepted
+- **Status:** Accepted; amended 2026-09-03 (see [Amendment](#amendment-2026-09-03-mmr-reranking-measured-worse-than-no-reranking))
 - **Date:** 2026-08-18
 - **Phase:** 3
 
@@ -69,7 +69,9 @@ the same score band as a chunk that's genuinely a strong match. Thresholding on 
 - **RRF's `k=60` is a standard default, not tuned for this corpus.** Phase 4's golden dataset is
   where fusion behavior actually gets measured against alternatives.
 - **MMR's `λ=0.7` is a starting heuristic** (AGENTS.md rule 2: not claimed as measured). Same for
-  every `RagProfile`'s `maxVectorDistance` abstention threshold (ADR-0008).
+  every `RagProfile`'s `maxVectorDistance` abstention threshold (ADR-0008). Since the
+  [2026-09-03 amendment](#amendment-2026-09-03-mmr-reranking-measured-worse-than-no-reranking) it is
+  `RagProfile.mmrLambda`, tunable per profile rather than a constant — still unmeasured.
 - **LLM reranking roughly doubles model calls on that profile** (one for the ranking, one for
   generation) — a real latency cost, which is exactly why it's a separate, opt-in profile rather than
   the default.
@@ -86,3 +88,61 @@ the same score band as a chunk that's genuinely a strong match. Thresholding on 
   `rag` and the retrieval debug endpoint depend on.
 - `SearchResult.rerankScore` is `null` for `RerankStrategy.LLM` and `.NONE` — an LLM reranker produces
   an ordering, not a calibrated score, and inventing one to fill the field would misrepresent it.
+
+## Amendment 2026-09-03: MMR reranking measured worse than no reranking
+
+The harness exists to check this ADR "after the fact" (Trade-offs, above). It now has, and the
+result goes against the `hybrid-rerank` profile.
+
+### What was measured
+
+The first **complete** live run (`eval/reports/2026-08-26-…md`, 84 of 84 cases, one repetition,
+`qwen/qwen3.8-27b` + `bge-m3`):
+
+| Profile | Recall@k | MRR | Cases with recall 0.0 |
+|---|---|---|---|
+| dense-only | 0.81 | 0.46 | 4 |
+| hybrid | **0.85** | **0.52** | **3** |
+| hybrid-rerank (`hybrid` + MMR, λ=0.7) | **0.71** | 0.43 | **6** |
+
+`hybrid-rerank` is last on recall — below plain `dense-only` — and doubles the number of cases that
+retrieve nothing relevant. A partial earlier run (46 of 84, biased toward the cases that finished
+inside an inert ~60s timeout, issue #65) had hidden this by tieing all three at 0.93.
+
+### Why this is consistent with the code, not a surprise
+
+`HybridSearchService` hands the reranker the **entire fused candidate pool** (`candidatesPerRetriever
+= 20` per retriever, so up to ~40 chunks) and MMR selects `topK = 5` from it. MMR is therefore free
+to drop a gold chunk that fused-score order would have kept in the top 5 — "recall can only stay
+equal or improve" is not a property MMR has when it re-selects from a pool larger than `topK`. On a
+two-source corpus, chunks that genuinely answer the same question are necessarily similar to each
+other, so the `(1−λ)·max_similarity(already_selected)` diversity penalty is most aggressive exactly
+when several gold chunks should all be returned. Lowest `citationRecall` for this profile in the
+same run (0.65 vs 0.69) is the same effect seen downstream.
+
+This does not contradict the **Decision** (MMR is still a real, correctly-implemented technique built
+from what the stack has). It confirms the **Trade-offs** section's own hedge — "MMR's λ=0.7 is a
+starting heuristic … not claimed as measured" and "neither reranker is a cross-encoder, so neither is
+expected to match one's accuracy" — and it promotes the **Alternatives considered** note that a
+cross-encoder is "the natural next candidate if Phase 4's evaluation harness shows MMR/LLM reranking
+underperforming" from hypothetical to live.
+
+### What changed in code with this amendment
+
+`λ` was a hardcoded `private static final double LAMBDA = 0.7` in `MmrReranker`. It is now
+`RagProfile.mmrLambda`, threaded through `HybridSearchOptions`, so it can be swept per profile
+against the golden dataset without touching the `knowledge` module. `MmrReranker` keeps `0.7` as the
+default for its 4-arg `Reranker`-interface method. No profile's behaviour changes: `hybrid-rerank`
+still runs λ=0.7 until a measured value replaces it.
+
+### What is NOT yet decided (tracked in issue #67)
+
+Making λ configurable is scaffolding, not the fix. Still open, and each needs per-case data from a
+live `./scripts/eval.sh --profiles=hybrid,hybrid-rerank --repetitions=3` run (≈7h) that has not been
+done:
+
+- whether a swept λ recovers `hybrid`-level recall on this corpus, or MMR is simply the wrong tool
+  for a corpus this narrow;
+- whether `hybrid-rerank` should keep being offered as a default-quality profile, or be reframed as a
+  diversity-first profile with recall understood to be a secondary metric for it;
+- whether the cross-encoder named above should now be added.
