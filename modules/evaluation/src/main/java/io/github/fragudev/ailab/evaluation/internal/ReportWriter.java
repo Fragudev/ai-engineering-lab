@@ -1,6 +1,7 @@
 package io.github.fragudev.ailab.evaluation.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.fragudev.ailab.evaluation.CaseCoverage;
 import io.github.fragudev.ailab.evaluation.EvalReport;
 import io.github.fragudev.ailab.evaluation.ProfileSummary;
 import java.io.IOException;
@@ -80,6 +81,13 @@ public class ReportWriter {
         map.put("latencyP95Ms", profile.latency().p95().toMillis());
         map.put("totalPromptTokens", profile.totalPromptTokens());
         map.put("totalCompletionTokens", profile.totalCompletionTokens());
+        // Case coverage — every mean above is over `completed` runs only. `check-eval-regression.sh`
+        // reads this to warn when a report's numbers cover less than the whole dataset.
+        Map<String, Object> coverage = new LinkedHashMap<>();
+        coverage.put("attempted", profile.coverage().attempted());
+        coverage.put("completed", profile.coverage().completed());
+        coverage.put("skipped", profile.coverage().skipped());
+        map.put("coverage", coverage);
         return map;
     }
 
@@ -113,13 +121,18 @@ public class ReportWriter {
                 .append(report.config().repetitions())
                 .append("\n\n");
 
+        md.append(caseCoverage(report));
+
         md.append("## Profile comparison\n\n");
-        md.append("| Profile | Recall@k | MRR | Cite prec. | Cite recall | Gate abstention | Refusal correctness "
-                + "| p50 (ms) | p95 (ms) | Prompt tokens | Completion tokens |\n");
-        md.append("|---|---|---|---|---|---|---|---|---|---|---|\n");
+        md.append(
+                "| Profile | Cases | Recall@k | MRR | Cite prec. | Cite recall | Gate abstention | Refusal correctness "
+                        + "| p50 (ms) | p95 (ms) | Prompt tokens | Completion tokens |\n");
+        md.append("|---|---|---|---|---|---|---|---|---|---|---|---|\n");
         for (ProfileSummary profile : report.profiles()) {
             md.append("| ")
                     .append(profile.ragProfile())
+                    .append(" | ")
+                    .append(coverageCell(profile.coverage()))
                     .append(" | ")
                     .append(fmt(profile.recallAtK()))
                     .append(" | ")
@@ -160,6 +173,67 @@ public class ReportWriter {
 
         md.append(limitations(recordedProfile));
         return md.toString();
+    }
+
+    /** A run that skips cases (a hung or failing model call — {@code EvalRunner.runProfile} logs and
+     * continues) still produces a full-looking table, with every number silently a subsample of the
+     * dataset. That is exactly how issues #65 and #67 happened. This section states, per profile,
+     * how many case runs completed against how many were attempted, and leads with a warning
+     * whenever any profile fell short — so a degraded run can't be mistaken for a clean one. */
+    private static String caseCoverage(EvalReport report) {
+        int attempted = report.profiles().stream()
+                .mapToInt(p -> p.coverage().attempted())
+                .sum();
+        int completed = report.profiles().stream()
+                .mapToInt(p -> p.coverage().completed())
+                .sum();
+        List<ProfileSummary> incomplete =
+                report.profiles().stream().filter(p -> !p.coverage().complete()).toList();
+
+        StringBuilder md = new StringBuilder();
+        md.append("## Case coverage\n\n");
+        if (incomplete.isEmpty()) {
+            md.append("Every profile completed every attempted case run: **")
+                    .append(completed)
+                    .append(" of ")
+                    .append(attempted)
+                    .append("** across ")
+                    .append(report.config().repetitions())
+                    .append(" repetition(s). The numbers below cover the whole dataset.\n\n");
+            return md.toString();
+        }
+
+        md.append("> **Warning — incomplete coverage.** ")
+                .append(completed)
+                .append(" of ")
+                .append(attempted)
+                .append(" attempted case runs completed. The rest threw (a hung or failing model call, most "
+                        + "often) and were skipped, so every metric for the affected profile(s) is a mean over a "
+                        + "**subsample** of the dataset, not the whole of it — do not compare these rows against a "
+                        + "full run. This is the failure mode behind issues #65 and #67.\n\n");
+        for (ProfileSummary p : incomplete) {
+            CaseCoverage c = p.coverage();
+            md.append("- `")
+                    .append(p.ragProfile())
+                    .append("` — ")
+                    .append(c.completed())
+                    .append(" of ")
+                    .append(c.attempted())
+                    .append(" completed, ")
+                    .append(c.skipped())
+                    .append(" skipped (")
+                    .append(String.format(Locale.ROOT, "%.0f%%", c.fraction() * 100))
+                    .append(" coverage)\n");
+        }
+        md.append('\n');
+        return md.toString();
+    }
+
+    /** {@code completed/attempted}, prefixed with a marker when it isn't the whole dataset so the
+     * table row itself flags the gap, not just the section above it. */
+    private static String coverageCell(CaseCoverage coverage) {
+        String cell = coverage.completed() + "/" + coverage.attempted();
+        return coverage.complete() ? cell : "⚠ " + cell;
     }
 
     /** Emitted on every report, because the previous single "Abstention acc." column was read as a
