@@ -133,7 +133,7 @@ public class EvalRunner {
             runRepository.save(run);
             repetitions.add(outcomes);
         }
-        return summarize(profile, repetitions);
+        return summarize(profile, cases.size(), repetitions);
     }
 
     private CaseResult runCase(EvalCase evalCase, RagProfile profile, boolean runJudge) {
@@ -185,7 +185,8 @@ public class EvalRunner {
         return new CaseResult(evalCase, answer.content(), answer.model(), metrics);
     }
 
-    private static ProfileSummary summarize(RagProfile profile, List<List<CaseResult>> repetitions) {
+    private static ProfileSummary summarize(
+            RagProfile profile, int casesPerRepetition, List<List<CaseResult>> repetitions) {
         List<Double> recallSamples = new ArrayList<>();
         List<Double> mrrSamples = new ArrayList<>();
         List<Double> precisionSamples = new ArrayList<>();
@@ -237,6 +238,13 @@ public class EvalRunner {
                     .sum();
         }
 
+        // Every metric above is a mean over the results actually collected. A case that threw was
+        // skipped in runProfile (log.warn + continue), so completedCases < casesPerRepetition ×
+        // repetitions means those means are a subsample — recorded here so the report can say so
+        // instead of presenting a degraded run as a clean one (issues #65, #67).
+        int attemptedCases = casesPerRepetition * repetitions.size();
+        int completedCases = repetitions.stream().mapToInt(List::size).sum();
+
         return new ProfileSummary(
                 profile.name(),
                 RepeatedMetric.of(recallSamples),
@@ -248,6 +256,7 @@ public class EvalRunner {
                 LatencyStats.of(latencies),
                 promptTokens,
                 completionTokens,
+                new CaseCoverage(attemptedCases, completedCases),
                 repetitions);
     }
 

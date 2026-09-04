@@ -544,7 +544,16 @@ components:
     RagProfile:
       type: object
       required:
-        [name, topK, candidatesPerRetriever, lexicalEnabled, rerankStrategy, contextTokenBudget, maxVectorDistance]
+        [
+          name,
+          topK,
+          candidatesPerRetriever,
+          lexicalEnabled,
+          rerankStrategy,
+          mmrLambda,
+          contextTokenBudget,
+          maxVectorDistance,
+        ]
       properties:
         name:
           type: string
@@ -557,6 +566,13 @@ components:
         rerankStrategy:
           type: string
           enum: [NONE, MMR, LLM]
+        mmrLambda:
+          type: number
+          description: >
+            Relevance-vs-diversity weight for the MMR reranker: each next chunk maximizes
+            lambda*relevance - (1-lambda)*max_similarity(already_selected). Only applied when
+            rerankStrategy is MMR. A starting heuristic, not tuned against a golden dataset
+            (issue #67).
         contextTokenBudget:
           type: integer
         maxVectorDistance:

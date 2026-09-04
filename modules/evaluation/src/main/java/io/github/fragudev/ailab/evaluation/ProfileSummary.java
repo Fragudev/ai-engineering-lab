@@ -22,6 +22,9 @@ import java.util.List;
  *     decline correctly", by whichever mechanism, including the model declining in its own prose.
  *     {@code NaN} when the judge was not run ({@code --judge}), which is <em>not measured</em>
  *     rather than zero. Inherits every weakness docs/ai-evaluation.md §3 states about judge scores.
+ * @param coverage how many case runs completed against how many were attempted. Every metric above
+ *     is a mean over the completed runs only, so {@code coverage.complete() == false} means this
+ *     whole row is a subsample — see {@link CaseCoverage} and issues #65/#67.
  */
 public record ProfileSummary(
         String ragProfile,
@@ -34,4 +37,5 @@ public record ProfileSummary(
         LatencyStats latency,
         long totalPromptTokens,
         long totalCompletionTokens,
+        CaseCoverage coverage,
         List<List<CaseResult>> repetitions) {}
