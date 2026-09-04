@@ -1,0 +1,19 @@
+pom.xml
+  s_c2cdc90bf95a97::t_d1adc679cfa167 48-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "96a8ebce1f7c1ab00921de1b1bc2e352d601a2d8",
+  "prompts": {},
+  "sessions": {
+    "s_c2cdc90bf95a97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fbe763-193a-4d1e-ab8f-1c1d46a8cc35",
+        "model": "unknown"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
