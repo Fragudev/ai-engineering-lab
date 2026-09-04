@@ -86,7 +86,7 @@ public class HybridSearchService {
 
         return switch (options.rerankStrategy()) {
             case NONE -> Reranker.assignFinalRank(limitTo(candidates, options.topK()));
-            case MMR -> mmrReranker.rerank(queryEmbedding, queryText, candidates, options.topK());
+            case MMR -> mmrReranker.rerank(queryEmbedding, queryText, candidates, options.topK(), options.mmrLambda());
             case LLM -> llmReranker.rerank(queryEmbedding, queryText, candidates, options.topK());
         };
     }

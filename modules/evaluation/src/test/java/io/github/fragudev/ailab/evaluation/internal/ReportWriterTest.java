@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.fragudev.ailab.evaluation.CaseCoverage;
 import io.github.fragudev.ailab.evaluation.CaseMetrics;
 import io.github.fragudev.ailab.evaluation.CaseResult;
 import io.github.fragudev.ailab.evaluation.EvalCase;
@@ -89,12 +90,64 @@ class ReportWriterTest {
         assertThat(profile.get("recallAtK").get("mean").isNull()).isTrue();
     }
 
+    @Test
+    void jsonSidecarCarriesCaseCoverage() throws IOException {
+        EvalReport report = reportWithOneProfile("dense-only", 0.8, 0.0, 0.9, 1.0, new CaseCoverage(84, 71));
+
+        Path mdPath = reportWriter.write(report, tempDir, true);
+        Path jsonPath = Path.of(mdPath.toString().replace(".md", ".json"));
+
+        JsonNode coverage =
+                json.readTree(Files.readString(jsonPath)).get("profiles").get(0).get("coverage");
+        assertThat(coverage.get("attempted").asInt()).isEqualTo(84);
+        assertThat(coverage.get("completed").asInt()).isEqualTo(71);
+        assertThat(coverage.get("skipped").asInt()).isEqualTo(13);
+    }
+
+    @Test
+    void markdownConfirmsCoverageWhenEveryCaseCompleted() throws IOException {
+        EvalReport report = reportWithOneProfile("dense-only", 0.8, 0.0, 0.9, 1.0, new CaseCoverage(28, 28));
+
+        String markdown = Files.readString(reportWriter.write(report, tempDir, true));
+
+        assertThat(markdown).contains("## Case coverage");
+        assertThat(markdown).contains("Every profile completed every attempted case run: **28 of 28**");
+        assertThat(markdown).doesNotContain("Warning — incomplete coverage");
+        // The comparison table gets a Cases column showing the ratio, unmarked when whole.
+        assertThat(markdown).contains("| dense-only | 28/28 |");
+    }
+
+    @Test
+    void markdownWarnsProminentlyWhenAProfileSkippedCases() throws IOException {
+        EvalReport report =
+                reportWithOneProfile("hybrid-rerank", 0.71, 0.0, 0.65, Double.NaN, new CaseCoverage(84, 14));
+
+        String markdown = Files.readString(reportWriter.write(report, tempDir, false));
+
+        assertThat(markdown).contains("**Warning — incomplete coverage.** 14 of 84");
+        assertThat(markdown).contains("subsample");
+        assertThat(markdown).contains("`hybrid-rerank` — 14 of 84 completed, 70 skipped (17% coverage)");
+        // The row itself is flagged, not just the section above it.
+        assertThat(markdown).contains("| hybrid-rerank | ⚠ 14/84 |");
+    }
+
     private EvalReport reportWithOneProfile(
             String ragProfile,
             double recallMean,
             double recallSpread,
             double citationPrecisionMean,
             double abstentionMean) {
+        return reportWithOneProfile(
+                ragProfile, recallMean, recallSpread, citationPrecisionMean, abstentionMean, new CaseCoverage(1, 1));
+    }
+
+    private EvalReport reportWithOneProfile(
+            String ragProfile,
+            double recallMean,
+            double recallSpread,
+            double citationPrecisionMean,
+            double abstentionMean,
+            CaseCoverage coverage) {
         EvalDataset dataset = new EvalDataset(EvalDatasetId.generate(), "test-dataset", "1");
         EvalCase evalCase = new EvalCase(
                 EvalCaseId.generate(),
@@ -122,6 +175,7 @@ class ReportWriterTest {
                 LatencyStats.of(List.of(Duration.ofMillis(10))),
                 5,
                 5,
+                coverage,
                 List.of(List.of(caseResult)));
 
         EvalRunConfig config =
