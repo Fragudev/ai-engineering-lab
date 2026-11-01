@@ -43,7 +43,7 @@
     <spotless-maven-plugin.version>3.10.0</spotless-maven-plugin.version>
     <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
     <dependency-check-maven.version>13.0.0</dependency-check-maven.version>
-    <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+    <jacoco-maven-plugin.version>0.8.16</jacoco-maven-plugin.version>
     <postgresql.version>42.7.13</postgresql.version>
 
     <!-- Overrides the version spring-boot-starter-parent manages (4.1.1 still ships 11.0.24). Found
