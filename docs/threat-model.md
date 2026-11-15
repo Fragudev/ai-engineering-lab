@@ -277,6 +277,15 @@ repository owner can add it as a secret) and is correspondingly slow; GitHub's o
 fail the build while it's off. A
 tag-pinned dependency on that tool would have silently run the compromised code on the next CI run.
 
+When the Trivy image scan flags a transitive dependency this project ships, the fix is a version
+override in the root `pom.xml`, each with a comment naming the CVEs and when to drop it: through
+Spring Boot's own version properties where Boot manages the library (`tomcat.version`,
+`jackson-bom.version`, `jackson-2-bom.version`), and through `dependencyManagement` where it does not
+(`postgresql`, and Kafka's `lz4-java` / `snappy-java` codecs). Findings in the base image's OS layer
+are cleared by re-pinning the `eclipse-temurin` digests; `.trivyignore` is reserved for findings that
+neither route can fix, and is empty as of 2026-11-15 (the eight `usr/bin/pebble` CVEs it held were
+cleared by that re-pin).
+
 The demo corpus is third-party content: sources, licenses and retrieval dates are recorded in
 `corpus/ATTRIBUTION.md`, and the corpus is downloaded by a script rather than committed, so
 provenance is auditable.
@@ -294,7 +303,6 @@ Documented rather than mitigated, because the mitigation cost exceeds the value 
 | Prompt-level injection defences are bypassable | Acknowledged as defence in depth; the structural controls carry the posture |
 | No rate limiting per user | One user; the global limit is sufficient |
 | No audit log shipping | Local Loki retention is adequate for the deployment context |
-| 8 HIGH-severity CVEs in `usr/bin/pebble` inside the `eclipse-temurin` base image, found by this project's own Trivy scan (Phase 8) | Base-image OS tooling, not a dependency this project declares or a binary it invokes; only clearable by an upstream image update, tracked in `.trivyignore` with the same reasoning rather than silently suppressed or left failing CI forever |
 
 ---
 
