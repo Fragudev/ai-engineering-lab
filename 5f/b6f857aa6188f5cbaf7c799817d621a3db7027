@@ -1,0 +1,21 @@
+README.md
+  s_82d044821234b9::t_b42cea11a43510 12-14,139,174-267,318-320,324
+docs/architecture.md
+  s_82d044821234b9::t_f581d40dfc575d 832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5fb6f857aa6188f5cbaf7c799817d621a3db7027",
+  "prompts": {},
+  "sessions": {
+    "s_82d044821234b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19e07119-4e27-4a43-8335-e6b52cd2ee1c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Francis Gutiérrez <francisge@ext.inditex.com>"
+    }
+  }
+}
