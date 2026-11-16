@@ -1,17 +1,9 @@
-# Accepted risk, not an oversight — see docs/threat-model.md §6 (Accepted risk) for the same
-# reasoning applied to other accepted items. Found by a real Trivy scan in .github/workflows/ci.yml
-# during Phase 8's own verification, not guessed.
+# Accepted risk, not an oversight — see docs/threat-model.md §6 (Accepted risk) for the reasoning
+# applied to accepted items. Every entry must name a finding from a real Trivy scan in
+# .github/workflows/ci.yml, not a guess, and say why it cannot be fixed in this repository.
 #
-# All entries below are in usr/bin/pebble, part of eclipse-temurin's own Ubuntu base OS layer, not a
-# dependency this project declares or a binary this application invokes. Pinning the base image by
-# digest (app/Dockerfile) means these can only be cleared by a genuine upstream image update, not by
-# anything in this repository — re-run `docker pull eclipse-temurin:25-jre` and re-check when
-# re-pinning the digest.
-CVE-2026-56862
-CVE-2026-56860
-CVE-2026-56859
-CVE-2026-56858
-CVE-2026-56853
-CVE-2026-46600
-CVE-2026-39821
-CVE-2026-33818
+# Currently empty. The eight usr/bin/pebble CVEs previously listed here (CVE-2026-33818,
+# CVE-2026-39821, CVE-2026-46600, CVE-2026-56853, CVE-2026-56858, CVE-2026-56859, CVE-2026-56860,
+# CVE-2026-56862) were cleared by the eclipse-temurin:25-jre digest re-pinned in app/Dockerfile on
+# 2026-11-15; a scan of that image without this file reports no CRITICAL or HIGH finding. Re-check
+# whenever the base-image digests are re-pinned (`docker pull eclipse-temurin:25-jre`).
