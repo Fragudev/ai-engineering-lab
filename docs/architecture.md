@@ -829,4 +829,4 @@ demonstrates less than the analysis does. For the record, this is how it would m
 
 **Accepted debt**, stated in the README because acknowledging it is worth more than hiding it: no
 multi-tenancy, no row-level authorization, no Kubernetes, no schema registry, no trained reranker, no
-semantic cache before Phase 8, deliberately minimal UI.
+semantic cache, deliberately minimal UI.
