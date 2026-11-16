@@ -9,12 +9,9 @@ OpenTelemetry tracing, and an evaluation harness that produces numbers instead o
 
 Runs entirely on your own machine against a local model server. No API key required.
 
-> **Status: all 9 phases complete, plus a full post-roadmap review.** Every capability below is
-> marked with its current state, and nothing is claimed to work until it does. See
-> [`docs/roadmap.md`](docs/roadmap.md) for the phase plan and what each phase actually verified —
-> including, in Phase 8, the doc/reality gaps that phase's own review found and corrected. The
-> roadmap ending was not the project ending: a subsequent line-by-line review found **17 real
-> defects** and fixed every one ([below](#the-post-roadmap-review)).
+> **Status: all 9 phases complete.** A line-by-line review after the roadmap closed found and fixed
+> **17 defects** — see [the post-roadmap review](#the-post-roadmap-review). The phase plan and what
+> each phase verified are in [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
@@ -47,45 +44,6 @@ behind a set of architecture conversations.
 | Tool calling | Schema-validated registry with scoped authorization, timeouts and full tracing | Done — Phase 5 |
 | Agentic workflow | An explicit state machine with persisted state, resumable and compensable | Done — Phase 6 |
 | MCP | Tool registry exposed as an MCP server; external MCP servers consumed as clients | Done — Phase 7 |
-
----
-
-## The post-roadmap review
-
-Every row above said "Done" when its phase closed. A line-by-line review afterwards found **17 real
-defects across them** — and fixing those is the part of this project worth reading.
-
-| Severity | Count | The ones that mattered most |
-|---|---|---|
-| High | 1 | Stored XSS in the document list ([#21](https://github.com/Fragudev/ai-engineering-lab/issues/21)) |
-| Medium | 10 | A confirmation-gate bypass — the gate and the executor consulted different sources of truth ([#22](https://github.com/Fragudev/ai-engineering-lab/issues/22)); `StageRunner` retrying non-retryable errors with no backoff ([#25](https://github.com/Fragudev/ai-engineering-lab/issues/25)); a RAG abstention threshold so miscalibrated the pipeline refused to answer **every single query** against a real embedding model ([#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)) |
-| Low | 6 | An NPE on a negative retry setting ([#26](https://github.com/Fragudev/ai-engineering-lab/issues/26)); no coverage measurement anywhere ([#33](https://github.com/Fragudev/ai-engineering-lab/issues/33)); no end-to-end test tier ([#34](https://github.com/Fragudev/ai-engineering-lab/issues/34)) |
-
-**Three findings are worth naming specifically, because each one contradicts something the project
-had already claimed about itself:**
-
-- **The abstention gate was calibrated against fixtures, not reality.** `RagProfiles`'
-  `maxVectorDistance` was an unmeasured `0.6` inherited from the `recorded` provider's hash-seeded
-  embeddings. Against real `bge-m3` vectors, an unambiguous, answerable question scored ≈ 0.95 — so
-  the headline RAG feature abstained on everything. Recalibrated to `0.55` from a real measurement
-  across all 28 golden-dataset queries plus four off-topic controls
-  ([ADR-0013](docs/adr/0013-rag-abstention-threshold.md)). **Passing `recorded`-profile integration
-  tests was never evidence the thresholds were right.**
-- **Four rows of the testing-strategy table named tools that were in no `pom.xml`** — WireMock,
-  Toxiproxy, Error Prone, NullAway. The coverage they described was partly real by other means; the
-  tooling column was fiction. Corrected rather than retrofitted by adopting four libraries to make a
-  sentence true ([#35](https://github.com/Fragudev/ai-engineering-lab/issues/35)).
-- **A headline feature failed silently in production conditions and nothing counted it.** During
-  Phase 8's live run, `LlmReranker` fell back to fused order on *every* call against a 27B model; the
-  only signal was a `WARN` line. There is now an `llm_degradation_total{component, reason}` counter
-  ([#37](https://github.com/Fragudev/ai-engineering-lab/issues/37)).
-
-What the review added, beyond fixes: the project's first coverage measurement (**88.0% instruction
-coverage**, measured — with the honest caveat that it leans on integration tests, not per-module unit
-tests), its first automated end-to-end tier, and unit coverage for six modules that had none.
-
-Full findings and reasoning: [`docs/improvement-plan.md`](docs/improvement-plan.md). Every issue is
-closed and every fix is a merged, CI-verified pull request.
 
 ---
 
@@ -178,7 +136,7 @@ phases, most recently against a real LM Studio instance in Phase 8 (`docs/roadma
 
 | Role | Minimum tier | Recommended tier |
 |---|---|---|
-| Chat | a 7–8B instruct model, quantized | a ~30B MoE (e.g. 30B-A3B class) |
+| Chat | a 7–8B instruct model, quantized | a ~30B mixture-of-experts model |
 | Embeddings | `bge-m3` | `bge-m3` |
 
 The embedding model is **not** interchangeable: the database schema is dimensioned to 1024 and
@@ -210,6 +168,100 @@ section for the full story, including a real retrieval-abstention threshold find
 Prefer not to install LM Studio? The `recorded` provider profile replays captured fixtures, so the
 application is fully explorable without a model server. It is also what CI uses — see
 [Testing strategy](docs/architecture.md#11-testing-strategy).
+
+---
+
+## Demo
+
+[`scripts/demo.sh`](scripts/demo.sh) drives every capability above against a real running instance
+over the same HTTP API a human would use — plain chat, ingestion with a real Kafka pipeline, RAG with
+citations, tool calling through the confirmation gate, MCP, and a full agentic workflow run. See
+[DEMO.md](DEMO.md) for how to run it and narration to read alongside. There is no recorded video:
+the demo is a script you can run and reproduce.
+
+---
+
+## Evaluation
+
+Retrieval quality is a measured property, not a claim. The harness runs a golden dataset against
+named RAG profiles and produces a comparison table: recall@k, MRR, citation precision, p50/p95
+latency and token cost per configuration. Reports are committed to `eval/reports/` with the date,
+chat model and hardware recorded, because a retrieval number without the model and machine behind it
+is not reproducible.
+
+**Profile comparison against a live model** — `qwen/qwen3.8-27b` + `bge-m3` on an Apple M4 Pro
+(48 GB), 84 of 84 cases, 2h21m
+([full report](eval/reports/2026-08-26-dense-only-hybrid-hybrid-rerank.md)):
+
+| Profile | Recall@k | MRR | Cite prec. | Cite recall | p50 |
+|---|---|---|---|---|---|
+| dense-only | **0.81** | 0.46 | 0.52 | 0.69 | 57.9s |
+| hybrid | **0.85** | **0.52** | 0.48 | 0.69 | 71.6s |
+| hybrid-rerank | 0.71 | 0.43 | 0.48 | 0.65 | 59.1s |
+
+`hybrid` leads on both recall and MRR. **`hybrid-rerank` is the worst of the three** — below plain
+`dense-only` on recall, meaning MMR reranking is discarding relevant chunks on this corpus rather
+than reordering them. That is a result against the project's own default, and it is the kind of
+answer the harness exists to produce.
+
+How to read these numbers:
+
+- **One repetition.** The `± 0.00` in the report is a single sample, not determinism.
+- **Refusal correctness was not measured.** The judge was not run, so the column reads `n/a`, not
+  zero ([#61](https://github.com/Fragudev/ai-engineering-lab/issues/61),
+  [`docs/ai-evaluation.md` §3](docs/ai-evaluation.md#3-metrics)).
+- **An earlier run reported recall 0.93 for all three profiles, and it was wrong.** It completed
+  only 46 of 84 cases: an inert timeout setting
+  ([#65](https://github.com/Fragudev/ai-engineering-lab/issues/65)) capped every model call at ~60s,
+  which dropped the slowest cases, and the slowest were the hardest. That report is kept and marked
+  superseded; the current report has the full account.
+- **Chat latency.** Five direct completions against the same model and machine took 10.3s, 12.1s,
+  26.3s, 51.4s and 59.7s (median 26.3s). Five samples do not support a p50/p95, so none is claimed;
+  the methodology is in the Phase 8 section of [`docs/roadmap.md`](docs/roadmap.md).
+
+Two things this project will **not** do: publish performance figures that were not measured, and
+present LLM-as-judge scores as primary evidence. Judge scores are reported as a secondary, caveated
+signal — a local model grading another local model is a weak instrument, as
+[`docs/ai-evaluation.md`](docs/ai-evaluation.md) explains.
+
+---
+
+## The post-roadmap review
+
+Every capability was marked "Done" when its phase closed. A line-by-line review afterwards found
+**17 real defects across them**, and fixing those is the part of this project worth reading.
+
+| Severity | Count | The ones that mattered most |
+|---|---|---|
+| High | 1 | Stored XSS in the document list ([#21](https://github.com/Fragudev/ai-engineering-lab/issues/21)) |
+| Medium | 10 | A confirmation-gate bypass — the gate and the executor consulted different sources of truth ([#22](https://github.com/Fragudev/ai-engineering-lab/issues/22)); `StageRunner` retrying non-retryable errors with no backoff ([#25](https://github.com/Fragudev/ai-engineering-lab/issues/25)); a RAG abstention threshold so miscalibrated the pipeline refused to answer **every single query** against a real embedding model ([#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)) |
+| Low | 6 | An NPE on a negative retry setting ([#26](https://github.com/Fragudev/ai-engineering-lab/issues/26)); no coverage measurement anywhere ([#33](https://github.com/Fragudev/ai-engineering-lab/issues/33)); no end-to-end test tier ([#34](https://github.com/Fragudev/ai-engineering-lab/issues/34)) |
+
+**Three findings are worth naming specifically, because each one contradicts something the project
+had already claimed about itself:**
+
+- **The abstention gate was calibrated against fixtures, not reality.** `RagProfiles`'
+  `maxVectorDistance` was an unmeasured `0.6` inherited from the `recorded` provider's hash-seeded
+  embeddings. Against real `bge-m3` vectors, an unambiguous, answerable question scored ≈ 0.95 — so
+  the headline RAG feature abstained on everything. Recalibrated to `0.55` from a real measurement
+  across all 28 golden-dataset queries plus four off-topic controls
+  ([ADR-0013](docs/adr/0013-rag-abstention-threshold.md)). **Passing `recorded`-profile integration
+  tests was never evidence the thresholds were right.**
+- **Four rows of the testing-strategy table named tools that were in no `pom.xml`** — WireMock,
+  Toxiproxy, Error Prone, NullAway. The coverage they described was partly real by other means; the
+  tooling column was fiction. Corrected rather than retrofitted by adopting four libraries to make a
+  sentence true ([#35](https://github.com/Fragudev/ai-engineering-lab/issues/35)).
+- **A headline feature failed silently in production conditions and nothing counted it.** During
+  Phase 8's live run, `LlmReranker` fell back to fused order on *every* call against a 27B model; the
+  only signal was a `WARN` line. There is now an `llm_degradation_total{component, reason}` counter
+  ([#37](https://github.com/Fragudev/ai-engineering-lab/issues/37)).
+
+What the review added, beyond fixes: the project's first coverage measurement (**88.0% instruction
+coverage**, which leans on integration tests rather than per-module unit tests), its first automated
+end-to-end tier, and unit coverage for six modules that had none.
+
+Full findings and reasoning: [`docs/improvement-plan.md`](docs/improvement-plan.md). Every issue is
+closed and every fix is a merged, CI-verified pull request.
 
 ---
 
@@ -256,75 +308,6 @@ scripts/              bootstrap, seed, fetch-corpus, eval, demo (see DEMO.md)
 
 ---
 
-## Demo
-
-[`scripts/demo.sh`](scripts/demo.sh) drives every capability above against a real running instance
-over the same HTTP API a human would use — plain chat, ingestion with a real Kafka pipeline, RAG with
-citations, tool calling through the confirmation gate, MCP, and a full agentic workflow run. See
-[DEMO.md](DEMO.md) for how to run it and narration to read alongside. This is the "recorded demo"
-this project's roadmap calls for, in the form this environment can actually produce: nothing here can
-capture and encode an actual video file, so this is real, reproducible automation instead of one —
-named plainly rather than presented as something it isn't.
-
----
-
-## Evaluation
-
-Retrieval quality is a measured property, not a claim. The harness runs a golden dataset against
-named RAG profiles and produces a comparison table: recall@k, MRR, citation precision, p50/p95
-latency and token cost per configuration.
-
-Reports are committed to `eval/reports/` with the date, chat model and hardware recorded, because a
-retrieval number without the model and machine behind it is not reproducible.
-
-**Real, measured chat latency** (Phase 8): five direct chat completions against a locally-running
-`qwen/qwen3.8-27b` on an Apple M4 Pro (48 GB RAM) — **10.3s, 12.1s, 26.3s, 51.4s, 59.7s**
-(median 26.3s). Five samples, stated as median/mean/range rather than a manufactured p50/p95 — see
-[`docs/roadmap.md`](docs/roadmap.md)'s Phase 8 section for the full methodology, including a real
-retrieval-threshold miscalibration this same live run surfaced
-([`docs/ai-evaluation.md` §8](docs/ai-evaluation.md#8-a-real-finding-from-the-first-live-model-run-phase-8-recalibrated-post-roadmap-issue-29)).
-
-**Real profile comparison against a live model** — every case, no gaps
-([`eval/reports/2026-08-26-dense-only-hybrid-hybrid-rerank.md`](eval/reports/2026-08-26-dense-only-hybrid-hybrid-rerank.md),
-`qwen/qwen3.8-27b` + `bge-m3` on an Apple M4 Pro, 48 GB, **84 of 84 cases**, 2h21m):
-
-| Profile | Recall@k | MRR | Cite prec. | Cite recall | p50 |
-|---|---|---|---|---|---|
-| dense-only | **0.81** | 0.46 | 0.52 | 0.69 | 57.9s |
-| hybrid | **0.85** | **0.52** | 0.48 | 0.69 | 71.6s |
-| hybrid-rerank | 0.71 | 0.43 | 0.48 | 0.65 | 59.1s |
-
-`hybrid` leads on both recall and MRR. **`hybrid-rerank` is the worst of the three** — below plain
-`dense-only` on recall, meaning MMR reranking is discarding relevant chunks on this corpus rather
-than reordering them. That is a real, uncomfortable result about the project's own default, and
-exactly the kind of answer the harness exists to produce.
-
-**These numbers are lower than the ones published a day earlier, and that is the point.** The
-previous run completed only 46 of 84 cases and reported recall 0.93 across all three profiles. The
-missing 38 were not random: an inert timeout setting
-([#65](https://github.com/Fragudev/ai-engineering-lab/issues/65)) capped every model call at ~60s, so
-the cases that got dropped were precisely the slowest — and slowest correlates with hardest. Those
-figures were survivorship-biased, and the tie at 0.93 hid `hybrid-rerank`'s real weakness entirely.
-Half of `dense-only`'s cases turn out to need more than 60 seconds; before the fix not one of them
-could finish. The earlier report is kept, marked superseded, with its wrong diagnosis named.
-
-**Remaining caveats, stated in the report itself:** a single repetition means `± 0.00` is one sample,
-not determinism. Refusal correctness reads `n/a` because the judge was not run — *not measured*, not
-zero ([#61](https://github.com/Fragudev/ai-engineering-lab/issues/61) split declining into two
-columns, since the deterministic gate and the model declining in prose are different mechanisms
-measured by different instruments; see
-[`docs/ai-evaluation.md` §3](docs/ai-evaluation.md#3-metrics)).
-
-Before the abstention threshold was recalibrated ([#29](https://github.com/Fragudev/ai-engineering-lab/issues/29)),
-every one of these numbers was `0`: the pipeline abstained on everything.
-
-Two things this project will **not** do: publish performance figures that were not measured, and
-present LLM-as-judge scores as primary evidence. Judge scores are reported as a secondary,
-explicitly caveated signal — a local model grading another local model is a weak instrument, and
-[`docs/ai-evaluation.md`](docs/ai-evaluation.md) says so plainly.
-
----
-
 ## Non-goals and known limitations
 
 Stated up front, because a portfolio project that hides its edges is less convincing than one that
@@ -332,12 +315,13 @@ maps them.
 
 - **No multi-tenancy.** Single user, simple authentication. Row-level isolation and per-tenant
   index partitioning are designed in `docs/architecture.md` but not built.
-- **No Kubernetes, no cloud deployment.** Local Docker Compose only. The README's deployment
-  section describes how it would map to a managed environment; it is analysis, not infrastructure.
+- **No Kubernetes, no cloud deployment.** Local Docker Compose only.
+  [`docs/architecture.md` §15](docs/architecture.md#15-deployment-analysis-not-implementation)
+  describes how it would map to a managed environment; it is analysis, not infrastructure.
 - **No schema registry.** Event schemas are versioned JSON Schema files. With one producer, Avro
   plus a registry container is cost without benefit — see [ADR-0005](docs/adr/0005-kafka.md).
 - **No trained reranker.** Reranking uses an off-the-shelf model or the LLM itself.
-- **No semantic cache** before Phase 8.
+- **No semantic cache.**
 - **Deliberately minimal UI.** Enough to demonstrate streaming, citations and ingestion progress.
   It is not the point of the project.
 - **Local models are weaker than frontier models**, particularly at tool calling. The provider
